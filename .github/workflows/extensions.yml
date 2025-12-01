@@ -29,36 +29,6 @@ jobs:
           # Be sure the extension name and directory name are the same
           # e.g. `extension-name: extensions/extension-name/**`
           filters: |
-            reaper: extensions/reaper/**
-            integration-session-manager: extensions/integration-session-manager/**
-            quarto-stock-report-python: extensions/quarto-stock-report-python/**
-            quarto-website: extensions/quarto-website/**
-            portfolio-dashboard: extensions/portfolio-dashboard/**
-            top-5-income-share-shiny: extensions/top-5-income-share-shiny/**
-            quarto-document: extensions/quarto-document/**
-            stock-api-plumber: extensions/stock-api-plumber/**
-            stock-api-flask: extensions/stock-api-flask/**
-            stock-dashboard-python: extensions/stock-dashboard-python/**
-            top-5-income-share-bokeh: extensions/top-5-income-share-bokeh/**
-            landing-page: extensions/landing-page/**
-            quarto-stock-report-r: extensions/quarto-stock-report-r/**
-            stock-api-fastapi: extensions/stock-api-fastapi/**
-            quarto-presentation: extensions/quarto-presentation/**
-            script-python: extensions/script-python/**
-            connectwidgets-example: extensions/connectwidgets-example/**
-            plumbertableau-example: extensions/plumbertableau-example/**
-            fastapitableau-example: extensions/fastapitableau-example/**
-            portfolio-report: extensions/portfolio-report/**
-            script-r: extensions/script-r/**
-            top-5-income-share-streamlit: extensions/top-5-income-share-streamlit/**
-            stock-report-jupyter: extensions/stock-report-jupyter/**
-            content-health-monitor: extensions/content-health-monitor/**
-            voila-example: extensions/voila-example/**
-            stock-report: extensions/stock-report/**
-            simple-mcp-server: extensions/simple-mcp-server/**
-            simple-shiny-chat-with-mcp: extensions/simple-shiny-chat-with-mcp/**
-            chat-with-content: extensions/chat-with-content/**
-            pqr: extensions/pqr/**
 
   # Runs for each extension that has changed from `simple-extension-changes`
   # Lints and packages in preparation for tests and and release.
@@ -187,10 +157,6 @@ jobs:
       # filter and the step output variable below
       # e.g. `extension-name: ${{ steps.changes.outputs.extension-name }}`
       # Be sure the extension name and directory name it is in are the same
-      publisher-command-center: ${{ steps.changes.outputs.publisher-command-center }}
-      package-vulnerability-scanner: ${{ steps.changes.outputs.package-vulnerability-scanner }}
-      runtime-version-scanner: ${{ steps.changes.outputs.runtime-version-scanner }}
-      usage-metrics-dashboard: ${{ steps.changes.outputs.usage-metrics-dashboard }}
 
     steps:
       - uses: actions/checkout@v4
@@ -203,47 +169,7 @@ jobs:
           # Be sure the extension name and directory have the same name
           # e.g. `extension-name: extensions/extension-name/**`
           filters: |
-            publisher-command-center: extensions/publisher-command-center/**
-            package-vulnerability-scanner: extensions/package-vulnerability-scanner/**
-            runtime-version-scanner: extensions/runtime-version-scanner/**
-            usage-metrics-dashboard: extensions/usage-metrics-dashboard/**
 
-  # Creates and releases the Publisher Command Center extension using a custom
-  # workflow
-  publisher-command-center:
-    needs: [complex-extension-changes]
-    # Only runs if the `complex-extension-changes` job detects changes in the
-    # publisher-command-center extension directory
-    if: ${{ needs.complex-extension-changes.outputs.publisher-command-center == 'true' }}
-    uses: ./.github/workflows/publisher-command-center.yml
-    secrets: inherit
-
-  # Creates and releases the Package Vulnerability Scanner extension using a custom workflow
-  package-vulnerability-scanner:
-    needs: [complex-extension-changes]
-    # Only runs if the `complex-extension-changes` job detects changes in the
-    # package-vulnerability-scanner extension directory
-    if: ${{ needs.complex-extension-changes.outputs.package-vulnerability-scanner == 'true' }}
-    uses: ./.github/workflows/package-vulnerability-scanner.yml
-    secrets: inherit
-
-  # Creates and releases the Runtime Version Scanner extension using a custom workflow
-  runtime-version-scanner:
-    needs: [complex-extension-changes]
-    # Only runs if the `complex-extension-changes` job detects changes in the
-    # runtime-version-scanner extension directory
-    if: ${{ needs.complex-extension-changes.outputs.runtime-version-scanner == 'true' }}
-    uses: ./.github/workflows/runtime-version-scanner.yml
-    secrets: inherit
-
-  # Creates and releases the Usage Metrics Dashboard extension using a custom workflow
-  usage-metrics-dashboard:
-    needs: [complex-extension-changes]
-    # Only runs if the `complex-extension-changes` job detects changes in the
-    # usage-metrics-dashboard extension directory
-    if: ${{ needs.complex-extension-changes.outputs.usage-metrics-dashboard == 'true' }}
-    uses: ./.github/workflows/usage-metrics-dashboard.yml
-    secrets: inherit
 
   # All extensions have been linted, packaged, and released, if necessary
   # Continuing to update the extension list with the latest release data
@@ -257,10 +183,7 @@ jobs:
     # completed before running this job
     needs: [
       simple-extension-release,
-      publisher-command-center,
-      package-vulnerability-scanner,
-      runtime-version-scanner,
-      usage-metrics-dashboard,
+      # Add complex extension job names here as needed
     ]
     if: ${{ always() }}
     outputs:
