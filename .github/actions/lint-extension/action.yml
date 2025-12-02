@@ -1,0 +1,130 @@
+name: Lint Extension
+description: Lint an extension for release
+
+inputs:
+  extension-name:
+    description: The name of the extension
+    required: true
+    type: string
+
+runs:
+  using: "composite"
+
+  steps:
+    - name: Check extension name matches directory
+      run: |
+        MANIFEST_NAME=$(jq -r '.extension.name' < ./extensions/${{ inputs.extension-name }}/manifest.json)
+        if [ ${{ inputs.extension-name }} != $MANIFEST_NAME ]; then
+          echo "Error: Extension name, directory, and manifest.json mismatch"
+          echo "Extension '${{ inputs.extension-name }}' must be in the folder '/extensions/${{ inputs.extension-name }}'" and have the name '${{ inputs.extension-name }}' in the manifest.json.
+          exit 1
+        fi
+      shell: bash
+
+    # Ensures that the manifest.json for the given extension name
+    # contains all the required fields for the rest of the release workflow
+    - run: |
+        jq '
+          if (.extension | type) != "object" then error("Missing extension object")
+          elif (.extension.name | type) != "string" then error("Missing extension.name")
+          elif (.extension.title | type) != "string" then error("Missing extension.title")
+          elif (.extension.description | type) != "string" then error("Missing extension.description")
+          elif (.extension.homepage | type) != "string" then error("Missing extension.homepage")
+          elif (.extension.minimumConnectVersion | type) != "string" then error("Missing extension.minimumConnectVersion")
+          elif (.extension.version | type) != "string" then error("Missing extension.version")
+          else . end
+        ' ./extensions/${{ inputs.extension-name }}/manifest.json
+      shell: bash
+
+    # Ensures that the manifest.json has only valid requiredFeatures
+    - name: Check required features
+      run: |
+        # Read in valid requiredFeatures from extensions.json
+        VALID_FEATURES=$(jq -c '.requiredFeatures' ./extensions.json)
+        
+        # Read in requiredFeatures from the extension's manifest.json
+        EXTENSION_REQUIRED_FEATURES=$(jq -c '.extension.requiredFeatures // []' ./extensions/${{ inputs.extension-name }}/manifest.json)
+
+        # Check if the extension's requiredFeatures is an array
+        if [ "$(jq -r 'type' <<< "$EXTENSION_REQUIRED_FEATURES")" != "array" ]; then
+          echo "Error: The requiredFeatures in manifest.json must be an array."
+          exit 1
+        fi
+        
+        # Check if any extension requiredFeatures are not in the valid requiredFeatures list
+        INVALID_FEATURES=$(jq -n -c --argjson global "$VALID_FEATURES" --argjson extension "$EXTENSION_REQUIRED_FEATURES" '
+          $extension | map(. as $feature | if ($global | index($feature) | not) then $feature else empty end)
+        ')
+        
+        # Check if there are any invalid requiredFeatures
+        if [ "$INVALID_FEATURES" != "[]" ]; then
+          echo "Error: The following `requiredFeatures` in manifest.json are not defined in extensions.json:"
+          echo "$INVALID_FEATURES"
+          echo "Please add these features to the 'requiredFeatures' array in extensions.json or remove them from the manifest."
+          exit 1
+        fi
+      shell: bash
+
+    # Ensures that the manifest.json category is valid
+    - name: Check category
+      run: |
+        # Read in valid category IDs from extensions.json
+        VALID_CATEGORY_IDS=$(jq -c '[.categories[] | .id]' ./extensions.json)
+
+        # Read in category from the extension's manifest.json
+        EXTENSION_CATEGORY=$(jq -r '.extension.category // ""' ./extensions/${{ inputs.extension-name }}/manifest.json)
+
+        # If the extension's category is empty, skip validation
+        if [ -z "$EXTENSION_CATEGORY" ]; then
+          echo "No category specified in manifest.json"
+          exit 0
+        fi
+
+        # Check if extension category is in the valid categories ID list
+        CATEGORY_VALID=$(jq -n --argjson global "$VALID_CATEGORY_IDS" --arg category "$EXTENSION_CATEGORY" '
+          $global | index($category) != null
+        ')
+
+        # Check if the category is valid
+        if [ "$CATEGORY_VALID" != "true" ]; then
+          echo "Error: The category '$EXTENSION_CATEGORY' in manifest.json is not defined in extensions.json"
+          echo "Valid categories are: $(jq -r 'join(", ")' <<< "$VALID_CATEGORY_IDS")"
+          echo "Please use one of the valid category IDs or add a new category to the 'categories' array in extensions.json."
+          exit 1
+        fi
+      shell: bash
+
+    # Ensures that the manifest.json has only valid tags
+    - name: Check tags
+      run: |
+        # Read in valid tags from extensions.json
+        VALID_TAGS=$(jq -c '.tags' ./extensions.json)
+        
+        # Read in tags from the extension's manifest.json
+        EXTENSION_TAGS=$(jq -c '.extension.tags // []' ./extensions/${{ inputs.extension-name }}/manifest.json)
+        
+        # Check if any extension tag is not in the valid tags list
+        INVALID_TAGS=$(jq -n -c --argjson global "$VALID_TAGS" --argjson extension "$EXTENSION_TAGS" '
+          $extension | map(. as $tag | if ($global | index($tag) | not) then $tag else empty end)
+        ')
+        
+        # Check if there are any invalid tags
+        if [ "$INVALID_TAGS" != "[]" ]; then
+          echo "Error: The following tags in manifest.json are not defined in extensions.json:"
+          echo "$INVALID_TAGS"
+          echo "Please add these tags to the 'tags' array in extensions.json or remove them from the manifest."
+          exit 1
+        fi
+      shell: bash
+       
+    - uses: actions/setup-node@v4
+
+    - run: npm install -g semver
+      shell: bash
+
+    # The semver must be valid for the sorting, comparisons, and release
+    # process to work
+    - name: Check for valid semver
+      run: |
+        semver -c $(jq -c -r '.extension.version' < ./extensions/${{ inputs.extension-name }}/manifest.json)
+      shell: bash
