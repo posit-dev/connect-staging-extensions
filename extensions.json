@@ -24,7 +24,8 @@
   "requiredFeatures": [
     "API Publishing",
     "OAuth Integrations",
-    "Current User Execution"
+    "Current User Execution",
+    "OpenTelemetry"
   ],
   "extensions": []
 }

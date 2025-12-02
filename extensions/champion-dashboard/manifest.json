@@ -26,9 +26,9 @@
     "category": "example",
     "tags": ["python"],
     "requiredFeatures": [
-      "OTEL"
+      "OpenTelemetry"
     ],
-    "minimumConnectVersion": "2025.11.0",
+    "minimumConnectVersion": "connect-preview",
     "version": "0.0.0"
   },
   "files": {
