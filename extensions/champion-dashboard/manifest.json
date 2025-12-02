@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "locale": "en_US.UTF-8",
+  "metadata": {
+    "appmode": "python-shiny",
+    "entrypoint": "app.py"
+  },
+  "python": {
+    "version": "3.11.3",
+    "package_manager": {
+      "name": "pip",
+      "version": "25.3",
+      "package_file": "requirements.txt"
+    }
+  },
+  "environment": {
+    "python": {
+      "requires": "~=3.11.0"
+    }
+  },
+  "extension": {
+    "name": "champion-dashboard",
+    "title": "OTEL Metrics Dashboard",
+    "description": "A dashboard containing various OTEL metrics from your Connect server.",
+    "homepage": "https://github.com/posit-dev/connect-staging-extensions/tree/main/extensions/champion-dashboard",
+    "category": "example",
+    "tags": ["python"],
+    "requiredFeatures": [
+      "OTEL"
+    ],
+    "minimumConnectVersion": "2025.11.0",
+    "version": "0.0.0"
+  },
+  "files": {
+    "requirements.txt": {
+      "checksum": "31145fd49f0ef68a3554b21dd59fb323"
+    },
+    "app.py": {
+      "checksum": "728ac8915491924021a37d919b2772ee"
+    }
+  }
+}

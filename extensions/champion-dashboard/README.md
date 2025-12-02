@@ -1,0 +1,19 @@
+# Champion Dashboard
+
+A Posit Connect extension that provides a real-time dashboard displaying OpenTelemetry metrics from your Connect server.
+
+## Features
+
+
+## Requirements
+
+- Posit Connect 2025.11.0 or later
+- OpenTelemetry metrics enabled on the Connect server
+
+## Installation
+
+Install this extension through the Posit Connect Extensions interface or via the Connect API.
+
+## Usage
+
+Once installed, the dashboard automatically fetches metrics from the Connect server's `/metrics` endpoint and displays them in an organized, visual format. The dashboard refreshes on each page load.
