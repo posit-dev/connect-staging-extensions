@@ -3,7 +3,7 @@ OpenTelemetry Dashboard - Point in Time View
 A Shiny dashboard for content platform analytics
 """
 
-from shiny import App, ui, render
+from shiny import App, ui, render, reactive
 from posit.connect import Client
 from io import BytesIO, TextIOWrapper
 import requests
@@ -66,6 +66,26 @@ DASHBOARD_CSS = """
     }
     .stat-box:hover {
         transform: translateY(-1px);
+    }
+    .stat-box-clickable {
+        background-color: #ffffff;
+        padding: 24px;
+        border-radius: 12px;
+        border: 1px solid rgba(55, 53, 47, 0.09);
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        min-height: 110px;
+        box-shadow: none;
+        transition: all 0.1s ease;
+        cursor: pointer;
+    }
+    .stat-box-clickable:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 2px 8px rgba(55, 53, 47, 0.15);
+        border-color: #2383e2;
     }
     .stat-box-title {
         font-size: 12px;
@@ -171,6 +191,18 @@ DASHBOARD_CSS = """
         padding: 6px 0;
         font-size: 14px;
         color: #37352f;
+    }
+    .content-type-item-clickable {
+        padding: 8px 12px;
+        font-size: 14px;
+        color: #37352f;
+        cursor: pointer;
+        border-radius: 6px;
+        transition: background-color 0.1s ease;
+        margin: 2px 0;
+    }
+    .content-type-item-clickable:hover {
+        background-color: rgba(35, 131, 226, 0.08);
     }
     .vulnerability-box {
         background-color: #fef3e2;
@@ -314,16 +346,18 @@ def get_content_stats(metrics: Dict) -> Dict:
         content_type = labels.get('content_type')
         runtime_lang = labels.get('runtime_language')
         runtime_ver = labels.get('runtime_version')
+        access_type = labels.get('access_type')
 
-        if not content_type and not runtime_lang:
+        # Total is the metric with no dimension labels (only otel_scope_* labels)
+        if not content_type and not runtime_lang and not access_type:
             stats["total"] = int(value)
 
-        elif content_type and not runtime_lang:
+        if content_type and not runtime_lang and not access_type:
             # Display "Other" instead of "unknown"
             display_type = "Other" if content_type == "unknown" else content_type
             stats["by_type"][display_type] = int(value)
 
-        elif runtime_lang and runtime_ver:
+        if runtime_lang and runtime_ver and not content_type and not access_type:
             runtime_key = f"{runtime_lang} {runtime_ver}"
             stats["runtime_versions"][runtime_key] = int(value)
 
@@ -426,27 +460,38 @@ def get_system_info(client):
         "TensorFlow Versions": tensorflow_versions_str
     }
 
-def get_access_control_stats():
-    """Get content access control statistics"""
-    return {
-        "no_login": 200,
-        "all_users": 500,
-        "specific_users": 300
+def get_access_control_stats(metrics: Dict) -> Dict[str, int]:
+    """Get content access control statistics from access_type dimension"""
+    content_count = metrics.get('content_count', [])
+    result = {}
+
+    # Mapping from access_type values to display labels
+    label_map = {
+        "acl": "Specific users/groups",
+        "all": "No login required",
+        "logged_in": "All users - login required"
     }
 
-def get_oauth_stats():
-    """Get OAuth integration statistics"""
-    return {
-        "Connect API": 200,
-        "Databricks": 100,
-        "Snowflake": 150
-    }
+    for labels, value in content_count:
+        access_type = labels.get('access_type')
+        if access_type:
+            # Use the mapped label if available, otherwise use the raw value
+            display_label = label_map.get(access_type, access_type)
+            result[display_label] = int(value)
 
-def get_currently_running():
-    """Get currently running stats"""
+    return result
+
+def get_currently_running(metrics: Dict) -> Dict[str, int]:
+    """Get currently running stats from real metrics"""
+    app_count = get_application_count(metrics)
+    process_count = get_process_count_by_tag(metrics)
+
+    total_apps = sum(app_count.values()) if app_count else 0
+    total_processes = sum(process_count.values()) if process_count else 0
+
     return {
-        "applications": 10,
-        "processes": 20
+        "applications": total_apps,
+        "processes": total_processes
     }
 
 def get_schedule_stats():
@@ -456,6 +501,42 @@ def get_schedule_stats():
         "last_24h_successful": 60,
         "last_24h_failed": 2
     }
+
+def get_application_count(metrics: Dict) -> Dict[str, int]:
+    """Extract application count broken down by application_type."""
+    application_count = metrics.get('application_count', [])
+    result = {}
+
+    for labels, value in application_count:
+        application_type = labels.get('application_type')
+        if application_type:
+            result[application_type] = int(value)
+
+    return result
+
+def get_schedule_count_by_type(metrics: Dict) -> Dict[str, int]:
+    """Extract schedule count broken down by schedule_type."""
+    schedule_count = metrics.get('schedule_count', [])
+    result = {}
+
+    for labels, value in schedule_count:
+        schedule_type = labels.get('schedule_type')
+        if schedule_type:
+            result[schedule_type] = int(value)
+
+    return result
+
+def get_process_count_by_tag(metrics: Dict) -> Dict[str, int]:
+    """Extract process count broken down by process_tag."""
+    process_count = metrics.get('process_count', [])
+    result = {}
+
+    for labels, value in process_count:
+        process_tag = labels.get('process_tag')
+        if process_tag:
+            result[process_tag] = int(value)
+
+    return result
 
 
 def create_stat_box(title, value, title_class="stat-box-title"):
@@ -509,7 +590,7 @@ app_ui = ui.page_fluid(
         # Content Stats Section
         ui.div(
             ui.output_ui("content_stats_grid"),
-            class_="section-grid-3"
+            class_="section-grid-4"
         ),
 
         # Integration Metrics Section
@@ -519,15 +600,9 @@ app_ui = ui.page_fluid(
             class_="content-card"
         ),
 
-        # Access Control, OAuth, and Currently Running Section
+        # Currently Running and Schedule Section
         ui.div(
-            ui.output_ui("access_oauth_running_grid"),
-            class_="section-grid-3"
-        ),
-
-        # Schedule Section
-        ui.div(
-            ui.output_ui("schedule_grid"),
+            ui.output_ui("running_schedule_grid"),
             class_="section-grid-2"
         ),
 
@@ -607,9 +682,10 @@ def server(input, output, session):
             class_="content-card"
         )
 
-        # Column 2: Content by Type
+        # Column 2: Content by Type (sorted by count descending)
         type_items = []
-        for content_type, count in stats["by_type"].items():
+        sorted_types = sorted(stats["by_type"].items(), key=lambda x: x[1], reverse=True)
+        for content_type, count in sorted_types:
             type_items.append(
                 ui.div(
                     ui.span(f"{content_type} :: ", style="color: #787774;"),
@@ -624,9 +700,10 @@ def server(input, output, session):
             class_="content-card"
         )
 
-        # Column 3: Runtime Versions
+        # Column 3: Runtime Versions (sorted by count descending)
         runtime_items = []
-        for runtime, count in stats["runtime_versions"].items():
+        sorted_runtimes = sorted(stats["runtime_versions"].items(), key=lambda x: x[1], reverse=True)
+        for runtime, count in sorted_runtimes:
             runtime_items.append(
                 ui.div(
                     ui.span(f"{runtime} :: ", style="color: #787774;"),
@@ -641,7 +718,15 @@ def server(input, output, session):
             class_="content-card"
         )
 
-        return [col1, col2, col3]
+        # Column 4: Content Access Control (sorted by count descending)
+        access_stats = get_access_control_stats(metrics)
+        sorted_access_stats = dict(sorted(access_stats.items(), key=lambda x: x[1], reverse=True))
+        col4 = create_content_card(
+            "Content by Access Control",
+            ui.div(*create_key_value_list(sorted_access_stats), class_="section-content")
+        )
+
+        return [col1, col2, col3, col4]
 
     @output
     @render.ui
@@ -652,20 +737,25 @@ def server(input, output, session):
         templates = integration_data['templates']
         auth_types = integration_data['auth_types']
 
-        # Build table header (templates as columns)
+        # Build table header (templates as columns + Total)
         header_row = ui.tags.tr(
             ui.tags.th(""),
-            *[ui.tags.th(template) for template in templates]
+            *[ui.tags.th(template) for template in templates],
+            ui.tags.th("Total")
         )
 
         # Build table rows (auth types as rows)
         table_rows = []
         for auth_type in auth_types:
             cells = [ui.tags.td(auth_type)]
+            row_total = 0
             for template in templates:
                 count = matrix.get(template, {}).get(auth_type, 0)
+                row_total += count
                 display_value = "." if count == 0 else str(count)
                 cells.append(ui.tags.td(display_value))
+            # Add total cell
+            cells.append(ui.tags.td(str(row_total)))
             table_rows.append(ui.tags.tr(*cells))
 
         return ui.tags.table(
@@ -676,36 +766,119 @@ def server(input, output, session):
 
     @output
     @render.ui
-    def access_oauth_running_grid():
-        """Render access control, OAuth, and currently running stats"""
-        access_stats = get_access_control_stats()
-        oauth_stats = get_oauth_stats()
-        running_stats = get_currently_running()
+    def running_schedule_grid():
+        """Render currently running and scheduled content"""
+        running_stats = get_currently_running(metrics)
+        schedule_by_type = get_schedule_count_by_type(metrics)
 
-        # Column 1: Access Control
-        access_items = {
-            "No login required": access_stats["no_login"],
-            "All users - login required": access_stats["all_users"],
-            "Specific users/groups": access_stats["specific_users"]
-        }
+        # Calculate total scheduled content
+        total_scheduled = sum(schedule_by_type.values()) if schedule_by_type else 0
+
+        # Column 1: Currently Running (clickable items)
+        running_items = [
+            ui.div(
+                ui.span("Applications: ", style="color: #787774;"),
+                ui.span(str(running_stats["applications"]), style="font-weight: 500;"),
+                class_="content-type-item-clickable",
+                onclick="Shiny.setInputValue('show_app_breakdown', Math.random())"
+            ),
+            ui.div(
+                ui.span("Processes: ", style="color: #787774;"),
+                ui.span(str(running_stats["processes"]), style="font-weight: 500;"),
+                class_="content-type-item-clickable",
+                onclick="Shiny.setInputValue('show_process_breakdown', Math.random())"
+            )
+        ]
+
         col1 = create_content_card(
-            "Content Access Control",
-            ui.div(*create_key_value_list(access_items), class_="section-content")
-        )
-
-        # Column 2: OAuth Integration
-        col2 = create_content_card(
-            "OAuth Integration Usage",
-            ui.div(*create_key_value_list(oauth_stats), class_="section-content")
-        )
-
-        # Column 3: Currently Running
-        col3 = create_content_card(
             "Currently Running",
-            ui.div(*create_key_value_list(running_stats), class_="section-content")
+            ui.div(*running_items, class_="section-content")
         )
 
-        return [col1, col2, col3]
+        # Column 2: Scheduled Content (clickable)
+        col2 = ui.div(
+            ui.div("Scheduled Content", class_="card-title"),
+            ui.div(
+                ui.div(
+                    ui.div(str(total_scheduled), class_="large-number"),
+                    ui.div(
+                        "Click to view breakdown by type",
+                        style="text-align: center; color: #787774; font-size: 12px; font-style: italic;"
+                    ),
+                    class_="stat-box-clickable",
+                    onclick="Shiny.setInputValue('show_schedule_breakdown', Math.random())"
+                )
+            ),
+            class_="content-card"
+        )
+
+        return [col1, col2]
+
+    @reactive.effect
+    @reactive.event(input.show_app_breakdown)
+    def show_application_breakdown():
+        """Show modal with application breakdown by type"""
+        app_count = get_application_count(metrics)
+
+        # Create breakdown list (sorted by count descending)
+        sorted_app_count = dict(sorted(app_count.items(), key=lambda x: x[1], reverse=True))
+        breakdown_items = create_key_value_list(sorted_app_count)
+
+        m = ui.modal(
+            ui.div(
+                ui.div("Application Breakdown by Type", style="font-size: 18px; font-weight: 600; margin-bottom: 16px; color: #37352f;"),
+                ui.div(*breakdown_items, class_="section-content"),
+                style="padding: 10px;"
+            ),
+            title=None,
+            easy_close=True,
+            footer=None
+        )
+        ui.modal_show(m)
+
+    @reactive.effect
+    @reactive.event(input.show_process_breakdown)
+    def show_process_breakdown():
+        """Show modal with process breakdown by tag"""
+        process_count = get_process_count_by_tag(metrics)
+
+        # Create breakdown list (sorted by count descending)
+        sorted_process_count = dict(sorted(process_count.items(), key=lambda x: x[1], reverse=True))
+        breakdown_items = create_key_value_list(sorted_process_count)
+
+        m = ui.modal(
+            ui.div(
+                ui.div("Process Breakdown by Tag", style="font-size: 18px; font-weight: 600; margin-bottom: 16px; color: #37352f;"),
+                ui.div(*breakdown_items, class_="section-content"),
+                style="padding: 10px;"
+            ),
+            title=None,
+            easy_close=True,
+            footer=None
+        )
+        ui.modal_show(m)
+
+    @reactive.effect
+    @reactive.event(input.show_schedule_breakdown)
+    def show_schedule_breakdown():
+        """Show modal with schedule breakdown by type"""
+        schedule_by_type = get_schedule_count_by_type(metrics)
+
+        # Create breakdown list (sorted by count descending)
+        sorted_schedule = dict(sorted(schedule_by_type.items(), key=lambda x: x[1], reverse=True))
+        breakdown_items = create_key_value_list(sorted_schedule)
+
+        m = ui.modal(
+            ui.div(
+                ui.div("Schedule Breakdown by Type", style="font-size: 18px; font-weight: 600; margin-bottom: 16px; color: #37352f;"),
+                ui.div(*breakdown_items, class_="section-content"),
+                style="padding: 10px;"
+            ),
+            title=None,
+            easy_close=True,
+            footer=None
+        )
+        ui.modal_show(m)
 
     @output
     @render.ui
