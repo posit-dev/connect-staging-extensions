@@ -29,6 +29,7 @@ jobs:
           # Be sure the extension name and directory name are the same
           # e.g. `extension-name: extensions/extension-name/**`
           filters: |
+            champion-dashboard: extensions/champion-dashboard/**
 
   # Runs for each extension that has changed from `simple-extension-changes`
   # Lints and packages in preparation for tests and and release.
@@ -151,7 +152,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       pull-requests: read
-    outputs:
+    # outputs:
       # Adding a new extension with a complex build process?
       # Add a new line here with the name of the extension as the name of the
       # filter and the step output variable below
@@ -161,14 +162,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: dorny/paths-filter@v3
-        id: changes
-        with:
-          # Adding a new extension that has a complex build process?
-          # Add a new line here with the name of the extension and directory path
-          # Be sure the extension name and directory have the same name
-          # e.g. `extension-name: extensions/extension-name/**`
-          filters: |
+      # Uncomment when adding the first complex extension
+      # - uses: dorny/paths-filter@v3
+      #   id: changes
+      #   with:
+      #     # Adding a new extension that has a complex build process?
+      #     # Add a new line here with the name of the extension and directory path
+      #     # Be sure the extension name and directory have the same name
+      #     # e.g. `extension-name: extensions/extension-name/**`
+      #     filters: |
+      #       extension-name: extensions/extension-name/**
 
 
   # All extensions have been linted, packaged, and released, if necessary

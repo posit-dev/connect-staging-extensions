@@ -1,0 +1,14 @@
+[project]
+name = "champion-dashboard"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11.3"
+dependencies = [
+    "datetime>=6.0",
+    "posit-sdk>=0.12.1",
+    "prometheus-client>=0.23.1",
+    "requests>=2.32.5",
+    "shiny>=1.5.0",
+    "typing>=3.10.0.0",
+]
