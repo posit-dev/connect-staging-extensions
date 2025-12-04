@@ -7,12 +7,9 @@ A Posit Connect extension that provides a real-time dashboard displaying OpenTel
 
 ## Requirements
 
-- Posit Connect 2025.11.0 or later
+- Posit Connect 2025.12.0 or later
 - OpenTelemetry metrics enabled on the Connect server
 
-## Installation
-
-Install this extension through the Posit Connect Extensions interface or via the Connect API.
 
 ## Usage
 
