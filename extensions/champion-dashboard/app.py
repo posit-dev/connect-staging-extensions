@@ -701,7 +701,7 @@ def server(input, output, session):
 
         m = ui.modal(
             ui.div(
-                ui.div("Schedule Breakdown by Type", style="font-size: 18px; font-weight: 600; margin-bottom: 16px; color: #37352f;"),
+                ui.div("Schedule by Type", style="font-size: 18px; font-weight: 600; margin-bottom: 16px; color: #37352f;"),
                 ui.div(*breakdown_items, class_="section-content"),
                 style="padding: 10px;"
             ),
