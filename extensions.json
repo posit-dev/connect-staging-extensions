@@ -27,5 +27,46 @@
     "Current User Execution",
     "OpenTelemetry"
   ],
-  "extensions": []
+  "extensions": [
+    {
+      "name": "champion-dashboard",
+      "title": "OTEL Metrics Dashboard",
+      "description": "A dashboard containing various OTEL metrics from your Connect server.",
+      "homepage": "https://github.com/posit-dev/connect-staging-extensions/tree/main/extensions/champion-dashboard",
+      "latestVersion": {
+        "version": "1.0.0",
+        "released": "2025-12-04T19:06:36Z",
+        "url": "https://github.com/posit-dev/connect-staging-extensions/releases/download/champion-dashboard%40v1.0.0/champion-dashboard.tar.gz",
+        "minimumConnectVersion": "connect-preview",
+        "requiredFeatures": [
+          "OpenTelemetry"
+        ],
+        "requiredEnvironment": {
+          "python": {
+            "requires": "~=3.11.0"
+          }
+        }
+      },
+      "versions": [
+        {
+          "version": "1.0.0",
+          "released": "2025-12-04T19:06:36Z",
+          "url": "https://github.com/posit-dev/connect-staging-extensions/releases/download/champion-dashboard%40v1.0.0/champion-dashboard.tar.gz",
+          "minimumConnectVersion": "connect-preview",
+          "requiredFeatures": [
+            "OpenTelemetry"
+          ],
+          "requiredEnvironment": {
+            "python": {
+              "requires": "~=3.11.0"
+            }
+          }
+        }
+      ],
+      "tags": [
+        "python"
+      ],
+      "category": "example"
+    }
+  ]
 }
