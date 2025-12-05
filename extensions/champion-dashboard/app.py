@@ -223,6 +223,42 @@ DASHBOARD_CSS = """
     .integration-table th:not(:first-child) {
         text-align: center;
     }
+    .content-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+    }
+    .content-table thead {
+        border-bottom: 2px solid rgba(55, 53, 47, 0.09);
+    }
+    .content-table th {
+        color: #787774;
+        font-weight: 600;
+        padding: 12px 8px;
+        text-align: left;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .content-table th:last-child {
+        text-align: right;
+    }
+    .content-table td {
+        padding: 10px 8px;
+        color: #37352f;
+        border-bottom: 1px solid rgba(55, 53, 47, 0.06);
+    }
+    .content-table td:first-child {
+        font-weight: 500;
+    }
+    .content-table td:last-child {
+        text-align: right;
+        font-weight: 600;
+        color: #2383e2;
+    }
+    .content-table tbody tr:hover {
+        background-color: #f7f6f3;
+    }
 """
 
 def fetch_all_prometheus_metrics(url: str) -> Dict[str, List[Tuple[Dict[str, str], float]]]:
@@ -534,45 +570,96 @@ def server(input, output, session):
             class_="content-card"
         )
 
-        type_items = []
         sorted_types = sorted(stats["by_type"].items(), key=lambda x: x[1], reverse=True)
-        for content_type, count in sorted_types:
-            type_items.append(
-                ui.div(
-                    ui.span(f"{content_type} :: ", style="color: #787774;"),
-                    ui.span(str(count), style="font-weight: 500;"),
-                    class_="content-type-item"
-                )
+        type_rows = [
+            ui.tags.tr(
+                ui.tags.td(content_type),
+                ui.tags.td(str(count))
             )
+            for content_type, count in sorted_types
+        ]
 
         col2 = ui.div(
-            ui.div("Content by Type", class_="card-title"),
-            ui.div(*type_items, class_="section-content"),
+            ui.div(
+                ui.tags.table(
+                    ui.tags.thead(
+                        ui.tags.tr(
+                            ui.tags.th("Type"),
+                            ui.tags.th("Count")
+                        )
+                    ),
+                    ui.tags.tbody(*type_rows),
+                    class_="content-table"
+                ),
+                class_="section-content"
+            ),
             class_="content-card"
         )
 
-        runtime_items = []
-        sorted_runtimes = sorted(stats["runtime_versions"].items(), key=lambda x: x[1], reverse=True)
-        for runtime, count in sorted_runtimes:
-            runtime_items.append(
-                ui.div(
-                    ui.span(f"{runtime} :: ", style="color: #787774;"),
-                    ui.span(str(count), style="font-weight: 500;"),
-                    class_="content-type-item"
-                )
+        # Define runtime priority order
+        runtime_order = {"R": 0, "Python": 1, "Quarto": 2}
+
+        # Custom sorting: first by runtime type, then by count (descending) within each type
+        def sort_key(item):
+            runtime, count = item
+            # Extract the runtime language (first word)
+            runtime_lang = runtime.split()[0] if runtime else ""
+            # Get priority (default to 999 for unknown runtimes)
+            priority = runtime_order.get(runtime_lang, 999)
+            # Return tuple: (priority, -count) to sort by priority first, then count descending
+            return (priority, -count)
+
+        sorted_runtimes = sorted(stats["runtime_versions"].items(), key=sort_key)
+        runtime_rows = [
+            ui.tags.tr(
+                ui.tags.td(runtime),
+                ui.tags.td(str(count))
             )
+            for runtime, count in sorted_runtimes
+        ]
 
         col3 = ui.div(
-            ui.div("Content by Runtime Version", class_="card-title"),
-            ui.div(*runtime_items, class_="section-content"),
+            ui.div(
+                ui.tags.table(
+                    ui.tags.thead(
+                        ui.tags.tr(
+                            ui.tags.th("Runtime Version"),
+                            ui.tags.th("Count")
+                        )
+                    ),
+                    ui.tags.tbody(*runtime_rows),
+                    class_="content-table"
+                ),
+                class_="section-content"
+            ),
             class_="content-card"
         )
 
         access_stats = get_access_control_stats(metrics)
-        sorted_access_stats = dict(sorted(access_stats.items(), key=lambda x: x[1], reverse=True))
-        col4 = create_content_card(
-            "Content by Access Control",
-            ui.div(*create_key_value_list(sorted_access_stats), class_="section-content")
+        sorted_access_stats = sorted(access_stats.items(), key=lambda x: x[1], reverse=True)
+        access_rows = [
+            ui.tags.tr(
+                ui.tags.td(access_type),
+                ui.tags.td(str(count))
+            )
+            for access_type, count in sorted_access_stats
+        ]
+
+        col4 = ui.div(
+            ui.div(
+                ui.tags.table(
+                    ui.tags.thead(
+                        ui.tags.tr(
+                            ui.tags.th("Access Type"),
+                            ui.tags.th("Count")
+                        )
+                    ),
+                    ui.tags.tbody(*access_rows),
+                    class_="content-table"
+                ),
+                class_="section-content"
+            ),
+            class_="content-card"
         )
 
         return [col1, col2, col3, col4]
