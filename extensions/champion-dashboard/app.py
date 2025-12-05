@@ -42,24 +42,12 @@ DASHBOARD_CSS = """
         align-items: center;
         min-height: 110px;
         box-shadow: none;
-        transition: transform 0.1s ease;
+        transition: all 0.1s ease;
     }
     .stat-box:hover {
         transform: translateY(-1px);
     }
     .stat-box-clickable {
-        background-color: #ffffff;
-        padding: 24px;
-        border-radius: 12px;
-        border: 1px solid rgba(55, 53, 47, 0.09);
-        text-align: center;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        min-height: 110px;
-        box-shadow: none;
-        transition: all 0.1s ease;
         cursor: pointer;
     }
     .stat-box-clickable:hover {
@@ -329,7 +317,6 @@ def get_integration_metrics(metrics: Dict) -> Dict:
     for labels, value in integrations_count:
         template = labels.get('integration_template')
         auth_type = labels.get('integration_auth_type')
-        count = int(value)
 
         if template and auth_type:
             templates.add(template)
@@ -337,7 +324,7 @@ def get_integration_metrics(metrics: Dict) -> Dict:
 
             if template not in matrix:
                 matrix[template] = {}
-            matrix[template][auth_type] = count
+            matrix[template][auth_type] = int(value)
 
     return {
         'matrix': matrix,
@@ -348,7 +335,6 @@ def get_integration_metrics(metrics: Dict) -> Dict:
 def get_system_info(client):
     response = client.get("server_settings")
     settings = response.json()
-    system_info = {'server_settings': settings}
 
     license_info = settings.get('license', {})
     tier = license_info.get('tier', 'N/A')
@@ -363,26 +349,19 @@ def get_system_info(client):
     else:
         entitlement = "None"
 
-    response = client.get("v1/server_settings/r")
-    system_info['r_installations'] = response.json().get('installations', [])
-
-    response = client.get("v1/server_settings/python")
-    system_info['python_installations'] = response.json().get('installations', [])
-
-    response = client.get("v1/server_settings/quarto")
-    system_info['quarto_installations'] = response.json().get('installations', [])
-
-    response = client.get("v1/server_settings/tensorflow")
-    system_info['tensorflow_installations'] = response.json().get('installations', [])
-
     def extract_versions(installations):
         versions = [inst.get('version', '') for inst in installations]
         return ", ".join(versions) if versions else "None"
 
-    r_versions_str = extract_versions(system_info['r_installations'])
-    python_versions_str = extract_versions(system_info['python_installations'])
-    quarto_versions_str = extract_versions(system_info['quarto_installations'])
-    tensorflow_versions_str = extract_versions(system_info['tensorflow_installations'])
+    r_installations = client.get("v1/server_settings/r").json().get('installations', [])
+    python_installations = client.get("v1/server_settings/python").json().get('installations', [])
+    quarto_installations = client.get("v1/server_settings/quarto").json().get('installations', [])
+    tensorflow_installations = client.get("v1/server_settings/tensorflow").json().get('installations', [])
+
+    r_versions_str = extract_versions(r_installations)
+    python_versions_str = extract_versions(python_installations)
+    quarto_versions_str = extract_versions(quarto_installations)
+    tensorflow_versions_str = extract_versions(tensorflow_installations)
 
     return {
         "Product": "Posit Connect",
@@ -440,14 +419,14 @@ def get_application_count(metrics: Dict) -> Dict:
 
     return result
 
-def get_schedule_count_by_type(metrics: Dict) -> Dict[str, int]:
+def get_schedule_count_by_status(metrics: Dict) -> Dict[str, int]:
     schedule_count = metrics.get('schedule_count', [])
     result = {}
 
     for labels, value in schedule_count:
-        schedule_type = labels.get('schedule_type')
-        if schedule_type:
-            result[schedule_type] = int(value)
+        schedule_status = labels.get('schedule_status')
+        if schedule_status:
+            result[schedule_status] = int(value)
 
     return result
 
@@ -465,13 +444,6 @@ def get_process_count_by_tag(metrics: Dict) -> Dict:
         'by_tag': by_tag
     }
 
-def create_stat_box(title, value, title_class="stat-box-title"):
-    return ui.div(
-        ui.div(title, class_=title_class),
-        ui.div(str(value), class_="stat-box-value") if value is not None else None,
-        class_="stat-box"
-    )
-
 def create_content_card(title, *content):
     return ui.div(
         ui.div(title, class_="card-title"),
@@ -479,15 +451,15 @@ def create_content_card(title, *content):
         class_="content-card"
     )
 
-def create_list_item(label, value):
-    return ui.div(
-        ui.span(label + ": ", style="color: #787774;"),
-        ui.span(str(value), style="font-weight: 500;"),
-        class_="content-type-item"
-    )
-
 def create_key_value_list(items_dict):
-    return [create_list_item(label, value) for label, value in items_dict.items()]
+    return [
+        ui.div(
+            ui.span(label + ": ", style="color: #787774;"),
+            ui.span(str(value), style="font-weight: 500;"),
+            class_="content-type-item"
+        )
+        for label, value in items_dict.items()
+    ]
 
 app_ui = ui.page_fluid(
     ui.tags.style(DASHBOARD_CSS),
@@ -534,11 +506,14 @@ def server(input, output, session):
     @render.ui
     def active_user_stats():
         user_metrics = get_user_activity_metrics(metrics)
+        stat_labels = [("DAU (24h)", '24h'), ("WAU (7d)", '7d'), ("MAU (30d)", '30d'), ("YAU (1y)", '1y')]
         return [
-            create_stat_box("DAU (24h)", user_metrics.get('24h') or 0),
-            create_stat_box("WAU (7d)", user_metrics.get('7d') or 0),
-            create_stat_box("MAU (30d)", user_metrics.get('30d') or 0),
-            create_stat_box("YAU (1y)", user_metrics.get('1y') or 0)
+            ui.div(
+                ui.div(label, class_="stat-box-title"),
+                ui.div(str(user_metrics.get(key) or 0), class_="stat-box-value"),
+                class_="stat-box"
+            )
+            for label, key in stat_labels
         ]
 
     @output
@@ -700,8 +675,8 @@ def server(input, output, session):
     @render.ui
     def running_schedule_grid():
         running_stats = get_currently_running(metrics)
-        schedule_by_type = get_schedule_count_by_type(metrics)
-        total_scheduled = sum(schedule_by_type.values()) if schedule_by_type else 0
+        schedule_by_status = get_schedule_count_by_status(metrics)
+        total_scheduled = sum(schedule_by_status.values()) if schedule_by_status else 0
 
         running_items = [
             ui.div(
@@ -729,10 +704,10 @@ def server(input, output, session):
                 ui.div(
                     ui.div(str(total_scheduled), class_="large-number"),
                     ui.div(
-                        "Click to view breakdown by type",
+                        "Click to view breakdown by status",
                         style="text-align: center; color: #787774; font-size: 12px; font-style: italic;"
                     ),
-                    class_="stat-box-clickable",
+                    class_="stat-box stat-box-clickable",
                     onclick="Shiny.setInputValue('show_schedule_breakdown', Math.random())"
                 )
             ),
@@ -782,13 +757,13 @@ def server(input, output, session):
     @reactive.effect
     @reactive.event(input.show_schedule_breakdown)
     def show_schedule_breakdown():
-        schedule_by_type = get_schedule_count_by_type(metrics)
-        sorted_schedule = dict(sorted(schedule_by_type.items(), key=lambda x: x[1], reverse=True))
+        schedule_by_status = get_schedule_count_by_status(metrics)
+        sorted_schedule = dict(sorted(schedule_by_status.items(), key=lambda x: x[1], reverse=True))
         breakdown_items = create_key_value_list(sorted_schedule)
 
         m = ui.modal(
             ui.div(
-                ui.div("Schedule by Type", style="font-size: 18px; font-weight: 600; margin-bottom: 16px; color: #37352f;"),
+                ui.div("Schedule by Status", style="font-size: 18px; font-weight: 600; margin-bottom: 16px; color: #37352f;"),
                 ui.div(*breakdown_items, class_="section-content"),
                 style="padding: 10px;"
             ),
