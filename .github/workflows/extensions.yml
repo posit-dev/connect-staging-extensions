@@ -152,7 +152,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       pull-requests: read
-    # outputs:
+    outputs:
+      publisher-command-center: ${{ steps.changes.outputs.publisher-command-center }}
       # Adding a new extension with a complex build process?
       # Add a new line here with the name of the extension as the name of the
       # filter and the step output variable below
@@ -162,17 +163,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Uncomment when adding the first complex extension
-      # - uses: dorny/paths-filter@v3
-      #   id: changes
-      #   with:
+      - uses: dorny/paths-filter@v3
+        id: changes
+        with:
       #     # Adding a new extension that has a complex build process?
       #     # Add a new line here with the name of the extension and directory path
       #     # Be sure the extension name and directory have the same name
       #     # e.g. `extension-name: extensions/extension-name/**`
-      #     filters: |
-      #       extension-name: extensions/extension-name/**
+          filters: |
+            publisher-command-center: extensions/publisher-command-center/**
 
+  # Creates and releases the Publisher Command Center extension using a custom
+  # workflow
+  publisher-command-center:
+    needs: [complex-extension-changes]
+    # Only runs if the `complex-extension-changes` job detects changes in the
+    # publisher-command-center extension directory
+    if: ${{ needs.complex-extension-changes.outputs.publisher-command-center == 'true' }}
+    uses: ./.github/workflows/publisher-command-center.yml
+    secrets: inherit
 
   # All extensions have been linted, packaged, and released, if necessary
   # Continuing to update the extension list with the latest release data
@@ -186,6 +195,7 @@ jobs:
     # completed before running this job
     needs: [
       simple-extension-release,
+      publisher-command-center,
       # Add complex extension job names here as needed
     ]
     if: ${{ always() }}
