@@ -35,10 +35,14 @@ jobs:
         with:
           r-version: '4.3.3'
 
-      - name: Install protobuf-compiler
+      - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y protobuf-compiler
+          sudo apt-get install -y \
+            protobuf-compiler \
+            libprotobuf-dev \
+            libcurl4-openssl-dev \
+            pkg-config
 
       - uses: r-lib/actions/setup-renv@v2
         with:
