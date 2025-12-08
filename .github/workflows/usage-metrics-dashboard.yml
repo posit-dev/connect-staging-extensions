@@ -35,6 +35,11 @@ jobs:
         with:
           r-version: '4.3.3'
 
+      - name: Install protobuf-compiler
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y protobuf-compiler
+
       - uses: r-lib/actions/setup-renv@v2
         with:
           working-directory: extensions/${{ env.EXTENSION_NAME }}
