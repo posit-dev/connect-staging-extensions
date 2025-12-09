@@ -9,7 +9,7 @@ import pprint
 # Configuration constants - could be moved to environment variables
 MAX_RETRIES = 6
 RETRY_DELAY = 5
-BUNDLE_BASE_PATH = "/connect-extensions/integration/bundles"
+BUNDLE_BASE_PATH = "/connect-staging-extensions/integration/bundles"
 
 class TestExtensionDeployment:
     def setup_method(self):
