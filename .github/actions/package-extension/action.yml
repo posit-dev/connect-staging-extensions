@@ -19,7 +19,7 @@ runs:
     # we will create a tarball from the extension's directory
     - name: Create tar
       if: ${{ inputs.artifact-name == '' }}
-      run: tar -czf ${{ inputs.extension-name}}.tar.gz ./extensions/${{ inputs.extension-name}}
+      run: tar -czf ${{ inputs.extension-name}}.tar.gz -C ./extensions ${{ inputs.extension-name}}
       shell: bash
 
     # If we are passed an artifact to use as the source for the tarball

@@ -43,8 +43,6 @@ endef
 
 
 # All versions starting with the first Connect version that fully supports extensions and version matching
-# Note connect-preview is the same version in the `preview` target. It is included here as part of the full list of all 
-# possible versions to test against in CI or when using the `all` target.
 CONNECT_VERSIONS := \
 	release \
 	2025.11.0 \
@@ -54,8 +52,7 @@ CONNECT_VERSIONS := \
 	2025.04.0
 
 
-# Compute the latest official release version (excludes connect-preview)
-LATEST_VERSION := $(firstword $(filter-out connect-preview,$(CONNECT_VERSIONS)))
+LATEST_VERSION := $(firstword $(filter-out release,$(CONNECT_VERSIONS)))
 
 
 # Ensure uv.lock file exists and dev dependencies are installed, beware circular references since it calls `dev`
