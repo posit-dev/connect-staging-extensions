@@ -222,5 +222,5 @@ help:
 test-%:
 	@mkdir -p logs reports
 	@echo "Testing against Connect version: $*"
-	$(UV) run pytest tests/ $(PYTEST_ARGS) \
+	@set -o pipefail; $(UV) run pytest tests/ $(PYTEST_ARGS) \
 			--junit-xml=./reports/$*.xml | tee ./logs/$*.log
