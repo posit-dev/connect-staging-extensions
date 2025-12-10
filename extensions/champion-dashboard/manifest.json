@@ -15,7 +15,7 @@
   },
   "environment": {
     "python": {
-      "requires": "~=3.12.0"
+      "requires": ">=3.10"
     }
   },
   "extension": {
@@ -29,7 +29,7 @@
       "OpenTelemetry"
     ],
     "minimumConnectVersion": "2025.11.0",
-    "version": "1.0.3"
+    "version": "1.0.4"
   },
   "files": {
     "requirements.txt": {
