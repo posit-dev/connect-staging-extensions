@@ -153,12 +153,14 @@ jobs:
     permissions:
       pull-requests: read
     outputs:
-      publisher-command-center-otel: ${{ steps.changes.outputs.publisher-command-center-otel }}
       # Adding a new extension with a complex build process?
       # Add a new line here with the name of the extension as the name of the
       # filter and the step output variable below
       # e.g. `extension-name: ${{ steps.changes.outputs.extension-name }}`
       # Be sure the extension name and directory name it is in are the same
+      publisher-command-center-otel: ${{ steps.changes.outputs.publisher-command-center-otel }}
+      usage-metrics-dashboard-otel: ${{ steps.changes.outputs.usage-metrics-dashboard-otel }}
+
 
     steps:
       - uses: actions/checkout@v4
@@ -172,6 +174,16 @@ jobs:
       #     # e.g. `extension-name: extensions/extension-name/**`
           filters: |
             publisher-command-center-otel: extensions/publisher-command-center-otel/**
+            usage-metrics-dashboard-otel: extensions/usage-metrics-dashboard-otel/**
+
+  # Creates and releases the Usage Metrics Dashboard extension using a custom workflow
+  usage-metrics-dashboard-otel:
+    needs: [complex-extension-changes]
+    # Only runs if the `complex-extension-changes` job detects changes in the
+    # usage-metrics-dashboard-otel extension directory
+    if: ${{ needs.complex-extension-changes.outputs.usage-metrics-dashboard-otel == 'true' }}
+    uses: ./.github/workflows/usage-metrics-dashboard-otel.yml
+    secrets: inherit
 
   # Creates and releases the Publisher Command Center extension using a custom
   # workflow
@@ -196,6 +208,7 @@ jobs:
     needs: [
       simple-extension-release,
       publisher-command-center-otel,
+      usage-metrics-dashboard-otel,
       # Add complex extension job names here as needed
     ]
     if: ${{ always() }}
