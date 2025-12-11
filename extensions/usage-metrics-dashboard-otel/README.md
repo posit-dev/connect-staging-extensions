@@ -1,5 +1,7 @@
 # Usage Metrics Dashboard
 
+**This extension is a fork of the base Usage Metrics Dashboard with the added ability to send OTel traces when set up in a properly-configured environment.**
+
 A Shiny app that helps you understand usage patterns across your work on Connect. Browse an overview of usage across everything you've published, and dive into detailed breakdowns of data for an individual deployment, down to the level of individual visits.
 
 ## Setup
