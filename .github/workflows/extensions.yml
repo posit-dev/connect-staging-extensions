@@ -158,7 +158,7 @@ jobs:
       # filter and the step output variable below
       # e.g. `extension-name: ${{ steps.changes.outputs.extension-name }}`
       # Be sure the extension name and directory name it is in are the same
-      usage-metrics-dashboard: ${{ steps.changes.outputs.usage-metrics-dashboard }}
+      usage-metrics-dashboard-otel: ${{ steps.changes.outputs.usage-metrics-dashboard-otel }}
 
 
     steps:
@@ -172,15 +172,15 @@ jobs:
       #     # Be sure the extension name and directory have the same name
       #     # e.g. `extension-name: extensions/extension-name/**`
           filters: |
-            usage-metrics-dashboard: extensions/usage-metrics-dashboard/**
+            usage-metrics-dashboard-otel: extensions/usage-metrics-dashboard-otel/**
 
   # Creates and releases the Usage Metrics Dashboard extension using a custom workflow
-  usage-metrics-dashboard:
+  usage-metrics-dashboard-otel:
     needs: [complex-extension-changes]
     # Only runs if the `complex-extension-changes` job detects changes in the
-    # usage-metrics-dashboard extension directory
-    if: ${{ needs.complex-extension-changes.outputs.usage-metrics-dashboard == 'true' }}
-    uses: ./.github/workflows/usage-metrics-dashboard.yml
+    # usage-metrics-dashboard-otel extension directory
+    if: ${{ needs.complex-extension-changes.outputs.usage-metrics-dashboard-otel == 'true' }}
+    uses: ./.github/workflows/usage-metrics-dashboard-otel.yml
     secrets: inherit
 
   # All extensions have been linted, packaged, and released, if necessary
@@ -195,7 +195,7 @@ jobs:
     # completed before running this job
     needs: [
       simple-extension-release,
-      usage-metrics-dashboard,
+      usage-metrics-dashboard-otel,
       # Add complex extension job names here as needed
     ]
     if: ${{ always() }}

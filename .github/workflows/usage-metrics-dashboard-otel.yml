@@ -8,7 +8,7 @@ on:
 # Setup the environment with the extension name for easy re-use
 # Also set the GH_TOKEN for the release-extension action to be able to use gh
 env:
-  EXTENSION_NAME: usage-metrics-dashboard
+  EXTENSION_NAME: usage-metrics-dashboard-otel
   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
@@ -82,7 +82,7 @@ jobs:
     uses: ./.github/workflows/connect-integration-tests.yml
     secrets: inherit
     with:
-      extensions: '["usage-metrics-dashboard"]'  # JSON array format to match the workflow input schema
+      extensions: '["usage-metrics-dashboard-otel"]'  # JSON array format to match the workflow input schema
 
   release:
     runs-on: ubuntu-latest

@@ -3061,7 +3061,7 @@
   "users": null,
   "extension": {
     "name": "usage-metrics-dashboard-otel",
-    "title": "Usage Metrics Dashboard (wired for OTel)",
+    "title": "Usage Metrics Dashboard (with OTel enabled)",
     "description": "Understand usage patterns across your work on Connect. Browse an overview of usage across everything you've published, and dive into detailed breakdowns of data for an individual deployment, down to the level of individual visits.",
     "homepage": "https://github.com/posit-dev/connect-extensions/tree/main/extensions/usage-metrics-dashboard",
     "tags": [],
