@@ -25,11 +25,8 @@
     "homepage": "https://github.com/posit-dev/connect-staging-extensions/tree/main/extensions/champion-dashboard",
     "category": "example",
     "tags": ["python"],
-    "requiredFeatures": [
-      "OpenTelemetry"
-    ],
     "minimumConnectVersion": "2025.11.0",
-    "version": "1.0.4"
+    "version": "1.0.5"
   },
   "files": {
     "requirements.txt": {
