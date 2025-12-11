@@ -1,6 +1,8 @@
-# Publisher Command Center
+# Publisher Command Center (with OTel Tracing)
 
 **Publisher Command Center** is a web-based application designed to help publishers manage and track their content.
+
+This is a fork of the base Publisher Command Center that can send OTel traces.
 
 ## Setup
 
