@@ -153,7 +153,7 @@ jobs:
     permissions:
       pull-requests: read
     outputs:
-      publisher-command-center: ${{ steps.changes.outputs.publisher-command-center }}
+      publisher-command-center-otel: ${{ steps.changes.outputs.publisher-command-center-otel }}
       # Adding a new extension with a complex build process?
       # Add a new line here with the name of the extension as the name of the
       # filter and the step output variable below
@@ -171,16 +171,16 @@ jobs:
       #     # Be sure the extension name and directory have the same name
       #     # e.g. `extension-name: extensions/extension-name/**`
           filters: |
-            publisher-command-center: extensions/publisher-command-center/**
+            publisher-command-center-otel: extensions/publisher-command-center-otel/**
 
   # Creates and releases the Publisher Command Center extension using a custom
   # workflow
-  publisher-command-center:
+  publisher-command-center-otel:
     needs: [complex-extension-changes]
     # Only runs if the `complex-extension-changes` job detects changes in the
-    # publisher-command-center extension directory
-    if: ${{ needs.complex-extension-changes.outputs.publisher-command-center == 'true' }}
-    uses: ./.github/workflows/publisher-command-center.yml
+    # publisher-command-center-otel extension directory
+    if: ${{ needs.complex-extension-changes.outputs.publisher-command-center-otel == 'true' }}
+    uses: ./.github/workflows/publisher-command-center-otel.yml
     secrets: inherit
 
   # All extensions have been linted, packaged, and released, if necessary
@@ -195,7 +195,7 @@ jobs:
     # completed before running this job
     needs: [
       simple-extension-release,
-      publisher-command-center,
+      publisher-command-center-otel,
       # Add complex extension job names here as needed
     ]
     if: ${{ always() }}

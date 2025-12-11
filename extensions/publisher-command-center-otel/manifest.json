@@ -18,8 +18,8 @@
     }
   },
   "extension": {
-  "name": "publisher-command-center",
-  "title": "Publisher Command Center",
+  "name": "publisher-command-center-otel",
+  "title": "Publisher Command Center (with OTel Tracing)",
   "description": "An app that helps publishers view and manage details about apps and dashboards deployed to Connect. View app metadata and history for all of the apps you are collaborating on as well as see and managing running process for individual apps.",
   "homepage": "https://github.com/posit-dev/connect-extensions/tree/main/extensions/publisher-command-center",
   "minimumConnectVersion": "2025.04.0",
@@ -27,7 +27,7 @@
     "API Publishing",
     "OAuth Integrations"
   ],
-  "version": "0.0.6"
+  "version": "1.0.0"
   },
   "files": {
     "requirements.txt": {
