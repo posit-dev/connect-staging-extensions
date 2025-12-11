@@ -34,20 +34,56 @@
       "description": "A dashboard containing various OTEL metrics from your Connect server.",
       "homepage": "https://github.com/posit-dev/connect-staging-extensions/tree/main/extensions/champion-dashboard",
       "latestVersion": {
-        "version": "1.0.2",
-        "released": "2025-12-05T15:58:07Z",
-        "url": "https://github.com/posit-dev/connect-staging-extensions/releases/download/champion-dashboard%40v1.0.2/champion-dashboard.tar.gz",
-        "minimumConnectVersion": "connect-preview",
-        "requiredFeatures": [
-          "OpenTelemetry"
-        ],
+        "version": "1.0.5",
+        "released": "2025-12-11T16:10:41Z",
+        "url": "https://github.com/posit-dev/connect-staging-extensions/releases/download/champion-dashboard%40v1.0.5/champion-dashboard.tar.gz",
+        "minimumConnectVersion": "2025.11.0",
         "requiredEnvironment": {
           "python": {
-            "requires": "~=3.11.0"
+            "requires": ">=3.10"
           }
         }
       },
       "versions": [
+        {
+          "version": "1.0.5",
+          "released": "2025-12-11T16:10:41Z",
+          "url": "https://github.com/posit-dev/connect-staging-extensions/releases/download/champion-dashboard%40v1.0.5/champion-dashboard.tar.gz",
+          "minimumConnectVersion": "2025.11.0",
+          "requiredEnvironment": {
+            "python": {
+              "requires": ">=3.10"
+            }
+          }
+        },
+        {
+          "version": "1.0.4",
+          "released": "2025-12-10T21:32:49Z",
+          "url": "https://github.com/posit-dev/connect-staging-extensions/releases/download/champion-dashboard%40v1.0.4/champion-dashboard.tar.gz",
+          "minimumConnectVersion": "2025.11.0",
+          "requiredFeatures": [
+            "OpenTelemetry"
+          ],
+          "requiredEnvironment": {
+            "python": {
+              "requires": ">=3.10"
+            }
+          }
+        },
+        {
+          "version": "1.0.3",
+          "released": "2025-12-05T20:51:56Z",
+          "url": "https://github.com/posit-dev/connect-staging-extensions/releases/download/champion-dashboard%40v1.0.3/champion-dashboard.tar.gz",
+          "minimumConnectVersion": "connect-preview",
+          "requiredFeatures": [
+            "OpenTelemetry"
+          ],
+          "requiredEnvironment": {
+            "python": {
+              "requires": "~=3.11.0"
+            }
+          }
+        },
         {
           "version": "1.0.2",
           "released": "2025-12-05T15:58:07Z",
@@ -95,6 +131,45 @@
         "python"
       ],
       "category": "example"
+    },
+    {
+      "name": "publisher-command-center-otel",
+      "title": "Publisher Command Center (with OTel Tracing)",
+      "description": "An app that helps publishers view and manage details about apps and dashboards deployed to Connect. View app metadata and history for all of the apps you are collaborating on as well as see and managing running process for individual apps.",
+      "homepage": "https://github.com/posit-dev/connect-extensions/tree/main/extensions/publisher-command-center",
+      "latestVersion": {
+        "version": "1.0.0",
+        "released": "2025-12-11T16:42:05Z",
+        "url": "https://github.com/posit-dev/connect-staging-extensions/releases/download/publisher-command-center-otel%40v1.0.0/publisher-command-center-otel.tar.gz",
+        "minimumConnectVersion": "2025.04.0",
+        "requiredFeatures": [
+          "API Publishing",
+          "OAuth Integrations"
+        ],
+        "requiredEnvironment": {
+          "python": {
+            "requires": "~=3.8"
+          }
+        }
+      },
+      "versions": [
+        {
+          "version": "1.0.0",
+          "released": "2025-12-11T16:42:05Z",
+          "url": "https://github.com/posit-dev/connect-staging-extensions/releases/download/publisher-command-center-otel%40v1.0.0/publisher-command-center-otel.tar.gz",
+          "minimumConnectVersion": "2025.04.0",
+          "requiredFeatures": [
+            "API Publishing",
+            "OAuth Integrations"
+          ],
+          "requiredEnvironment": {
+            "python": {
+              "requires": "~=3.8"
+            }
+          }
+        }
+      ],
+      "tags": []
     }
   ]
 }

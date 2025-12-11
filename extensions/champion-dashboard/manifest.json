@@ -6,7 +6,7 @@
     "entrypoint": "app.py"
   },
   "python": {
-    "version": "3.11.3",
+    "version": "3.12.11",
     "package_manager": {
       "name": "pip",
       "version": "25.3",
@@ -15,7 +15,7 @@
   },
   "environment": {
     "python": {
-      "requires": "~=3.11.0"
+      "requires": ">=3.10"
     }
   },
   "extension": {
@@ -25,11 +25,8 @@
     "homepage": "https://github.com/posit-dev/connect-staging-extensions/tree/main/extensions/champion-dashboard",
     "category": "example",
     "tags": ["python"],
-    "requiredFeatures": [
-      "OpenTelemetry"
-    ],
-    "minimumConnectVersion": "connect-preview",
-    "version": "1.0.2"
+    "minimumConnectVersion": "2025.11.0",
+    "version": "1.0.5"
   },
   "files": {
     "requirements.txt": {
