@@ -14,13 +14,13 @@ resource_attrs <- c(
 if (nzchar(connect_job_key)) {
   resource_attrs <- c(
     resource_attrs,
-    paste0("connect.job_key=", connect_job_key)
+    paste0("job.key=", connect_job_key)
   )
 }
 if (nzchar(connect_content_guid)) {
   resource_attrs <- c(
     resource_attrs,
-    paste0("connect.content_guid=", connect_content_guid)
+    paste0("content.guid=", connect_content_guid)
   )
 }
 
@@ -361,6 +361,13 @@ ui <- function(request) {
 }
 
 server <- function(input, output, session) {
+  # End shiny_app_startup span after first reactive flush
+  if (is_otel_tracing() && !is.null(shiny_app_startup_span)) {
+    session$onFlushed(function() {
+      otel::end_span(shiny_app_startup_span)
+    }, once = TRUE)
+  }
+
   if (is_otel_tracing()) {
     otel::start_local_active_span("server")
   }
@@ -1400,13 +1407,9 @@ if (is_otel_tracing()) {
 }
 
 if (is_otel_tracing()) {
-  shiny_app_start_span <- otel::start_local_active_span("shiny_app_start")
+  shiny_app_startup_span <- otel::start_local_active_span("shiny_app_startup")
+} else {
+  shiny_app_startup_span <- NULL
 }
 
-app_on_start <- function() {
-  if (is_otel_tracing()) {
-    otel::end_span(shiny_app_start_span)
-  }
-}
-
-shinyApp(ui, server, onStart = app_on_start)
+shinyApp(ui, server)
