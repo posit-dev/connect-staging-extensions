@@ -131,6 +131,45 @@
         "python"
       ],
       "category": "example"
+    },
+    {
+      "name": "publisher-command-center-otel",
+      "title": "Publisher Command Center (with OTel Tracing)",
+      "description": "An app that helps publishers view and manage details about apps and dashboards deployed to Connect. View app metadata and history for all of the apps you are collaborating on as well as see and managing running process for individual apps.",
+      "homepage": "https://github.com/posit-dev/connect-extensions/tree/main/extensions/publisher-command-center",
+      "latestVersion": {
+        "version": "1.0.0",
+        "released": "2025-12-11T16:42:05Z",
+        "url": "https://github.com/posit-dev/connect-staging-extensions/releases/download/publisher-command-center-otel%40v1.0.0/publisher-command-center-otel.tar.gz",
+        "minimumConnectVersion": "2025.04.0",
+        "requiredFeatures": [
+          "API Publishing",
+          "OAuth Integrations"
+        ],
+        "requiredEnvironment": {
+          "python": {
+            "requires": "~=3.8"
+          }
+        }
+      },
+      "versions": [
+        {
+          "version": "1.0.0",
+          "released": "2025-12-11T16:42:05Z",
+          "url": "https://github.com/posit-dev/connect-staging-extensions/releases/download/publisher-command-center-otel%40v1.0.0/publisher-command-center-otel.tar.gz",
+          "minimumConnectVersion": "2025.04.0",
+          "requiredFeatures": [
+            "API Publishing",
+            "OAuth Integrations"
+          ],
+          "requiredEnvironment": {
+            "python": {
+              "requires": "~=3.8"
+            }
+          }
+        }
+      ],
+      "tags": []
     }
   ]
 }
