@@ -1,15 +1,7 @@
-service_name <- "co.posit.connect-extensions.usage-metrics-dashboard"
-Sys.setenv(
-  OTEL_SERVICE_NAME = service_name
-)
-
 connect_job_key <- Sys.getenv("CONNECT_CONTENT_JOB_KEY")
 connect_content_guid <- Sys.getenv("CONNECT_CONTENT_GUID")
 
-# Build resource attributes for OTel
-resource_attrs <- c(
-  paste0("service.name=", service_name)
-)
+resource_attrs <- character(0)
 
 if (nzchar(connect_job_key)) {
   resource_attrs <- c(
@@ -41,13 +33,13 @@ print_env_var <- function(env_var, redact = FALSE) {
   print(paste0(env_var, ": ", display_value))
 }
 
-print_env_var("OTEL_SERVICE_NAME")
 print_env_var("OTEL_RESOURCE_ATTRIBUTES")
 
 library(otel)
 library(otelsdk)
 
 print_env_var("OTEL_ENV")
+print_env_var("OTEL_SERVICE_NAME")
 print_env_var("OTEL_EXPORTER_OTLP_LOGS_ENDPOINT")
 print_env_var("OTEL_EXPORTER_OTLP_LOGS_HEADERS", redact = TRUE)
 print_env_var("OTEL_EXPORTER_OTLP_LOGS_PROTOCOL")
@@ -71,9 +63,16 @@ print("get_default_tracer_provider()")
 print(get_default_tracer_provider())
 
 is_otel_tracing <- function() {
+  str(list(
+    "require" = requireNamespace("otel", quietly = TRUE),
+    "otel::is_tracing_enabled()" = otel::is_tracing_enabled(),
+    "shiny:::otel_is_tracing_enabled()" = shiny:::otel_is_tracing_enabled()
+  ))
   requireNamespace("otel", quietly = TRUE) && otel::is_tracing_enabled()
 }
 
+# Make a tracer with that name here.
+# Try passing the tracer in to start_local_active_span().
 if (is_otel_tracing()) {
   initialization_span <- otel::start_local_active_span("initialization")
 }
@@ -362,11 +361,11 @@ ui <- function(request) {
 
 server <- function(input, output, session) {
   # End shiny_app_startup span after first reactive flush
-  if (is_otel_tracing() && !is.null(shiny_app_startup_span)) {
-    session$onFlushed(function() {
-      otel::end_span(shiny_app_startup_span)
-    }, once = TRUE)
-  }
+  # if (is_otel_tracing() && !is.null(shiny_app_startup_span)) {
+  #   session$onFlushed(function() {
+  #     otel::end_span(shiny_app_startup_span)
+  #   }, once = TRUE)
+  # }
 
   if (is_otel_tracing()) {
     otel::start_local_active_span("server")
@@ -1406,10 +1405,10 @@ if (is_otel_tracing()) {
   otel::end_span(initialization_span)
 }
 
-if (is_otel_tracing()) {
-  shiny_app_startup_span <- otel::start_local_active_span("shiny_app_startup")
-} else {
-  shiny_app_startup_span <- NULL
-}
+# if (is_otel_tracing()) {
+#   shiny_app_startup_span <- otel::start_local_active_span("shiny_app_startup")
+# } else {
+#   shiny_app_startup_span <- NULL
+# }
 
 shinyApp(ui, server)
