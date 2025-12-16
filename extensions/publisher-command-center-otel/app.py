@@ -15,18 +15,30 @@ from opentelemetry.sdk.resources import SERVICE_NAME, Resource
 from cachetools import TTLCache, cached
 
 # Initialize OpenTelemetry
-# Collect all CONNECT_* environment variables
+# Handle well-known attributes with standardized names
+resource_attrs = {
+    SERVICE_NAME: os.getenv("OTEL_SERVICE_NAME", "co.posit.connect-extensions.publisher-command-center"),
+}
+
+# Add job.key if present
+connect_job_key = os.getenv("CONNECT_CONTENT_JOB_KEY")
+if connect_job_key:
+    resource_attrs["job.key"] = connect_job_key
+
+# Add content.guid if present
+connect_content_guid = os.getenv("CONNECT_CONTENT_GUID")
+if connect_content_guid:
+    resource_attrs["content.guid"] = connect_content_guid
+
+# Collect remaining CONNECT_* environment variables (excluding the two handled above)
 connect_attrs = {
     f"connect.{key.lower().replace('connect_', '')}": value
     for key, value in os.environ.items()
-    if key.startswith("CONNECT_")
+    if key.startswith("CONNECT_") and key not in ("CONNECT_CONTENT_JOB_KEY", "CONNECT_CONTENT_GUID")
 }
 
-# Combine with service name
-resource_attrs = {
-    SERVICE_NAME: os.getenv("OTEL_SERVICE_NAME", "publisher-command-center"),
-    **connect_attrs
-}
+# Combine all attributes
+resource_attrs.update(connect_attrs)
 
 resource = Resource.create(resource_attrs)
 tracer_provider = TracerProvider(resource=resource)
