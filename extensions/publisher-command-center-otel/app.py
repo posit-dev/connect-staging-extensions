@@ -33,38 +33,18 @@ trace.set_tracer_provider(tracer_provider)
 tracer = trace.get_tracer(__name__)
 
 # Instrument imports
-with tracer.start_as_current_span("startup.import_fastapi") as span:
+with tracer.start_as_current_span("startup.imports"):
     from fastapi import FastAPI, Header, Body
-    span.set_attribute("import.module", "fastapi")
-
-with tracer.start_as_current_span("startup.import_staticfiles") as span:
     from fastapi.staticfiles import StaticFiles
-    span.set_attribute("import.module", "fastapi.staticfiles")
-
-with tracer.start_as_current_span("startup.import_posit_connect") as span:
     from posit import connect
     from posit.connect.errors import ClientError
-    span.set_attribute("import.module", "posit.connect")
-
-with tracer.start_as_current_span("startup.import_cachetools") as span:
     from cachetools import TTLCache, cached
-    span.set_attribute("import.module", "cachetools")
 
-# Instrument client creation
-with tracer.start_as_current_span("startup.create_connect_client") as span:
+# Instrument initialization
+with tracer.start_as_current_span("startup.initialization"):
     client = connect.Client()
-    span.set_attribute("client.type", "posit.connect.Client")
-
-# Instrument app creation
-with tracer.start_as_current_span("startup.create_fastapi_app") as span:
     app = FastAPI()
-    span.set_attribute("app.framework", "fastapi")
-
-# Instrument cache initialization
-with tracer.start_as_current_span("startup.initialize_cache") as span:
     client_cache = TTLCache(maxsize=float("inf"), ttl=3600)
-    span.set_attribute("cache.ttl", 3600)
-    span.set_attribute("cache.maxsize", "unlimited")
 
 
 @app.get("/api/visitor-auth")
