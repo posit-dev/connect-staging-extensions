@@ -7,11 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Added startup instrumentation to track application initialization performance
+  - `startup.import_posit_connect` - tracks time to import posit connect library
+  - `startup.import_cachetools` - tracks time to import cachetools library
+  - `startup.create_connect_client` - tracks Connect client creation
+  - `startup.create_fastapi_app` - tracks FastAPI app creation
+  - `startup.initialize_cache` - tracks cache initialization
+
 ### Changed
 - Updated OpenTelemetry resource attributes to use well-known attribute names
   - `CONNECT_CONTENT_JOB_KEY` is now exported as `job.key`
   - `CONNECT_CONTENT_GUID` is now exported as `content.guid`
-  - Other `CONNECT_*` environment variables continue to be exported with `connect.*` prefix
+  - Only explicitly safe environment variables are exported (no automatic collection of all `CONNECT_*` variables)
 
 ## [1.0.0]
 
