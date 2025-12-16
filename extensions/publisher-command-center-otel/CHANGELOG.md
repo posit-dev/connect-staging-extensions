@@ -9,11 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Added startup instrumentation to track application initialization performance
+  - `startup.import_fastapi` - tracks time to import FastAPI framework
+  - `startup.import_staticfiles` - tracks time to import FastAPI StaticFiles
   - `startup.import_posit_connect` - tracks time to import posit connect library
   - `startup.import_cachetools` - tracks time to import cachetools library
   - `startup.create_connect_client` - tracks Connect client creation
   - `startup.create_fastapi_app` - tracks FastAPI app creation
   - `startup.initialize_cache` - tracks cache initialization
+
+### Removed
+- Removed unused `from http import client` import
 
 ### Changed
 - Updated OpenTelemetry resource attributes to use well-known attribute names

@@ -1,7 +1,4 @@
-from http import client
 import asyncio
-from fastapi import FastAPI, Header, Body
-from fastapi.staticfiles import StaticFiles
 import os
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry import trace
@@ -36,6 +33,14 @@ trace.set_tracer_provider(tracer_provider)
 tracer = trace.get_tracer(__name__)
 
 # Instrument imports
+with tracer.start_as_current_span("startup.import_fastapi") as span:
+    from fastapi import FastAPI, Header, Body
+    span.set_attribute("import.module", "fastapi")
+
+with tracer.start_as_current_span("startup.import_staticfiles") as span:
+    from fastapi.staticfiles import StaticFiles
+    span.set_attribute("import.module", "fastapi.staticfiles")
+
 with tracer.start_as_current_span("startup.import_posit_connect") as span:
     from posit import connect
     from posit.connect.errors import ClientError
