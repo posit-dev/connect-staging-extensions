@@ -3,7 +3,7 @@ name = "champion-dashboard"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.11.3"
+requires-python = ">=3.10"
 dependencies = [
     "datetime>=6.0",
     "posit-sdk>=0.12.1",

@@ -1,0 +1,232 @@
+from http import client
+import asyncio
+from fastapi import FastAPI, Header, Body
+from fastapi.staticfiles import StaticFiles
+from posit import connect
+from posit.connect.errors import ClientError
+import os
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+from opentelemetry import trace
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+from opentelemetry.sdk.resources import SERVICE_NAME, Resource
+
+from cachetools import TTLCache, cached
+
+# Initialize OpenTelemetry
+# Collect all CONNECT_* environment variables
+connect_attrs = {
+    f"connect.{key.lower().replace('connect_', '')}": value
+    for key, value in os.environ.items()
+    if key.startswith("CONNECT_")
+}
+
+# Combine with service name
+resource_attrs = {
+    SERVICE_NAME: os.getenv("OTEL_SERVICE_NAME", "publisher-command-center"),
+    **connect_attrs
+}
+
+resource = Resource.create(resource_attrs)
+tracer_provider = TracerProvider(resource=resource)
+span_processor = BatchSpanProcessor(OTLPSpanExporter())
+tracer_provider.add_span_processor(span_processor)
+trace.set_tracer_provider(tracer_provider)
+
+client = connect.Client()
+
+app = FastAPI()
+
+# Create cache with TTL=1hour and unlimited size
+client_cache = TTLCache(maxsize=float("inf"), ttl=3600)
+
+# Get tracer for creating custom spans
+tracer = trace.get_tracer(__name__)
+
+
+@app.get("/api/visitor-auth")
+async def integration_status(posit_connect_user_session_token: str = Header(None)):
+    """
+    If running on Connect, attempt to build a visitor client.
+    If that raises the 212 error (no OAuth integration), return authorized=False.
+    """
+
+    if os.getenv("RSTUDIO_PRODUCT") == "CONNECT":
+        if not posit_connect_user_session_token:
+            return {"authorized": False}
+        try:
+            get_visitor_client(posit_connect_user_session_token)
+        except ClientError as err:
+            if err.error_code == 212:
+                return {"authorized": False}
+            raise
+
+    return {"authorized": True}
+
+
+@app.put("/api/visitor-auth")
+async def set_integration(integration_guid: str = Body(..., embed=True)):
+    if os.getenv("RSTUDIO_PRODUCT") == "CONNECT":
+        content_guid = os.getenv("CONNECT_CONTENT_GUID")
+        content = client.content.get(content_guid)
+        content.oauth.associations.update(integration_guid)
+    else:
+        # Raise an error if not running on Connect
+        raise ClientError(
+            error_code=400,
+            message="This endpoint is only available when running on Posit Connect.",
+        )
+    return {"status": "success"}
+
+
+@app.get("/api/integrations")
+async def get_integrations():
+    integrations = client.oauth.integrations.find()
+    admin_integrations = [
+        i
+        for i in integrations
+        if i["template"] == "connect" and i["config"]["max_role"] == "Admin"
+    ]
+    publisher_integrations = [
+        i
+        for i in integrations
+        if i["template"] == "connect" and i["config"]["max_role"] == "Publisher"
+    ]
+    eligible_integrations = admin_integrations + publisher_integrations
+    return eligible_integrations[0] if eligible_integrations else None
+
+
+@cached(client_cache)
+def get_visitor_client(token: str | None) -> connect.Client:
+    """Create and cache API client per token with 1 hour TTL"""
+    if token:
+        return client.with_user_session_token(token)
+    else:
+        return client
+
+
+@app.get("/api/contents")
+async def contents(posit_connect_user_session_token: str = Header(None)):
+    visitor = get_visitor_client(posit_connect_user_session_token)
+
+    with tracer.start_as_current_span("fetch_all_content"):
+        all_content = visitor.content.find()
+
+    with tracer.start_as_current_span("filter_owned_content"):
+        contents = [c for c in all_content if c.app_role in ["owner", "editor"]]
+
+    with tracer.start_as_current_span("fetch_active_jobs"):
+        for content in contents:
+            content["active_jobs"] = [job for job in content.jobs if job["status"] == 0]
+
+    return contents
+
+
+@app.get("/api/contents/{content_id}")
+async def content(
+    content_id: str, posit_connect_user_session_token: str = Header(None)
+):
+    visitor = get_visitor_client(posit_connect_user_session_token)
+    return visitor.content.get(content_id)
+
+@app.patch("/api/content/{content_id}/lock")
+async def lock_content(
+    content_id: str,
+    posit_connect_user_session_token: str = Header(None),
+):
+    visitor = get_visitor_client(posit_connect_user_session_token)
+    content = visitor.content.get(content_id)
+    is_locked = content.locked
+
+    content.update(locked=not is_locked)
+    return content
+
+@app.patch("/api/content/{content_id}/rename")
+async def rename_content(
+    content_id: str,
+    title: str = Body(..., embed = True),
+    posit_connect_user_session_token: str = Header(None),
+):
+    visitor = get_visitor_client(posit_connect_user_session_token)
+    content = visitor.content.get(content_id)
+
+    content.update(title = title)
+    return content
+
+@app.get("/api/contents/{content_id}/processes")
+async def get_content_processes(
+    content_id: str, posit_connect_user_session_token: str = Header(None)
+):
+    visitor = get_visitor_client(posit_connect_user_session_token)
+
+    # Assert the viewer has access to the content
+    content = visitor.content.get(content_id)
+    # make a list of the iterable:
+    active_jobs = [job for job in content.jobs if job["status"] == 0]
+    return active_jobs
+
+
+@app.delete("/api/contents/{content_id}")
+async def delete_content(
+    content_id: str,
+    posit_connect_user_session_token: str = Header(None),
+):
+    visitor = get_visitor_client(posit_connect_user_session_token)
+
+    content = visitor.content.get(content_id)
+    content.delete()
+
+
+@app.delete("/api/contents/{content_id}/processes/{process_id}")
+async def destroy_process(
+    content_id: str,
+    process_id: str,
+    posit_connect_user_session_token: str = Header(None),
+):
+    visitor = get_visitor_client(posit_connect_user_session_token)
+
+    content = visitor.content.get(content_id)
+    job = content.jobs.find(process_id)
+    if job:
+        job.destroy()
+        for _ in range(30):
+            job = content.jobs.find(process_id)
+            if job["status"] != 0:
+                return
+            await asyncio.sleep(1)
+
+
+@app.get("/api/contents/{content_id}/author")
+async def get_author(
+    content_id,
+    posit_connect_user_session_token: str = Header(None),
+):
+    visitor = get_visitor_client(posit_connect_user_session_token)
+    content = visitor.content.get(content_id)
+    return content.owner
+
+
+@app.get("/api/contents/{content_id}/releases")
+async def get_releases(
+    content_id,
+    posit_connect_user_session_token: str = Header(None),
+):
+    visitor = get_visitor_client(posit_connect_user_session_token)
+    content = visitor.content.get(content_id)
+    return content.bundles.find()
+
+
+@app.get("/api/contents/{content_id}/metrics")
+async def get_metrics(
+    content_id,
+    posit_connect_user_session_token: str = Header(None),
+):
+    visitor = get_visitor_client(posit_connect_user_session_token)
+    content = visitor.content.get(content_id)
+    metrics = visitor.metrics.usage.find(content_guid=content["guid"])
+    return metrics
+
+app.mount("/", StaticFiles(directory="dist", html=True), name="static")
+
+FastAPIInstrumentor.instrument_app(app)
