@@ -63,11 +63,6 @@ print("get_default_tracer_provider()")
 print(get_default_tracer_provider())
 
 is_otel_tracing <- function() {
-  str(list(
-    "require" = requireNamespace("otel", quietly = TRUE),
-    "otel::is_tracing_enabled()" = otel::is_tracing_enabled(),
-    "shiny:::otel_is_tracing_enabled()" = shiny:::otel_is_tracing_enabled()
-  ))
   requireNamespace("otel", quietly = TRUE) && otel::is_tracing_enabled()
 }
 
