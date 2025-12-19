@@ -347,7 +347,7 @@ def get_integration_metrics(metrics: Dict) -> Dict:
 
             if template not in matrix:
                 matrix[template] = {}
-            matrix[template][auth_type] = matrix[template].get(auth_type, 0) + int(value)
+            matrix[template][auth_type] = int(value) 
 
     return {
         'matrix': matrix,
