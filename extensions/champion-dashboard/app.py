@@ -199,12 +199,12 @@ DASHBOARD_CSS = """
     .section-content::-webkit-scrollbar-thumb:hover {
         background: rgba(55, 53, 47, 0.3);
     }
-    .integration-table {
+    .oauth-association-table {
         width: 100%;
         border-collapse: collapse;
         font-size: 14px;
     }
-    .integration-table th {
+    .oauth-association-table th {
         background-color: #f7f6f3;
         color: #37352f;
         font-weight: 600;
@@ -212,22 +212,22 @@ DASHBOARD_CSS = """
         text-align: left;
         border-bottom: 2px solid rgba(55, 53, 47, 0.09);
     }
-    .integration-table td {
+    .oauth-association-table td {
         padding: 12px;
         color: #37352f;
         border-bottom: 1px solid rgba(55, 53, 47, 0.09);
     }
-    .integration-table th:first-child {
+    .oauth-associatio-table th:first-child {
         border-right: 2px solid rgba(55, 53, 47, 0.09);
     }
-    .integration-table td:first-child {
+    .oauth-association-table td:first-child {
         font-weight: 500;
         border-right: 1px solid rgba(55, 53, 47, 0.09);
     }
-    .integration-table td:not(:first-child) {
+    .oauth-association-table td:not(:first-child) {
         text-align: center;
     }
-    .integration-table th:not(:first-child) {
+    .oauth-association-table th:not(:first-child) {
         text-align: center;
     }
     .content-table {
@@ -326,18 +326,18 @@ def get_content_stats(metrics: Dict) -> Dict:
 
     return stats
 
-def get_integration_metrics(metrics: Dict) -> Dict:
-    integrations_count = metrics.get('integrations_count', [])
+def get_oauth_association_metrics(metrics: Dict) -> Dict:
+    associations_count = metrics.get('associations_count', [])
 
     matrix = {}
     templates = set()
     auth_types = set()
 
-    for labels, value in integrations_count:
+    for labels, value in associations_count:
         template = labels.get('integration_template')
         auth_type = labels.get('integration_auth_type')
 
-        # Collapse "Visitor API Key" into "Viewer" (functionally equivalent)
+        # Collapse "Visitor API Key" into "Viewer" for this dashboard
         if auth_type == "Visitor API Key":
             auth_type = "Viewer"
 
@@ -534,8 +534,8 @@ app_ui = ui.page_fluid(
             class_="section-grid-4"
         ),
         ui.div(
-            ui.div("OAuth Integration Stats", class_="card-title"),
-            ui.output_ui("integration_metrics_table"),
+            ui.div("OAuth Association Stats", class_="card-title"),
+            ui.output_ui("oauth_association_metrics_table"),
             class_="content-card"
         ),
         ui.div(
@@ -695,11 +695,11 @@ def server(input, output, session):
 
     @output
     @render.ui
-    def integration_metrics_table():
-        integration_data = get_integration_metrics(metrics)
-        matrix = integration_data['matrix']
-        templates = integration_data['templates']
-        auth_types = integration_data['auth_types']
+    def oauth_association_metrics_table():
+        associations_data = get_oauth_association_metrics(metrics)
+        matrix = associations_data['matrix']
+        templates = associations_data['templates']
+        auth_types = associations_data['auth_types']
 
         header_row = ui.tags.tr(
             ui.tags.th(""),
@@ -722,7 +722,7 @@ def server(input, output, session):
         return ui.tags.table(
             ui.tags.thead(header_row),
             ui.tags.tbody(*table_rows),
-            class_="integration-table"
+            class_="oauth-association-table"
         )
 
     @output
