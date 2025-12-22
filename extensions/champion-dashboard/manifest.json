@@ -26,7 +26,7 @@
     "category": "example",
     "tags": ["python"],
     "minimumConnectVersion": "2025.11.0",
-    "version": "1.0.5"
+    "version": "1.0.6"
   },
   "files": {
     "requirements.txt": {
