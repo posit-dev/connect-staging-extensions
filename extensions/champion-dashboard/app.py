@@ -266,6 +266,42 @@ DASHBOARD_CSS = """
     .content-table tbody tr:hover {
         background-color: #f7f6f3;
     }
+    .template-header {
+        position: relative;
+        cursor: help;
+    }
+    .template-header .tooltip-text {
+        visibility: hidden;
+        background-color: #37352f;
+        color: #fff;
+        text-align: center;
+        border-radius: 6px;
+        padding: 8px 12px;
+        position: absolute;
+        z-index: 1;
+        bottom: 125%;
+        left: 50%;
+        transform: translateX(-50%);
+        white-space: nowrap;
+        font-size: 12px;
+        font-weight: 400;
+        opacity: 0;
+        transition: opacity 0.2s;
+    }
+    .template-header .tooltip-text::after {
+        content: "";
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        margin-left: -5px;
+        border-width: 5px;
+        border-style: solid;
+        border-color: #37352f transparent transparent transparent;
+    }
+    .template-header:hover .tooltip-text {
+        visibility: visible;
+        opacity: 1;
+    }
 """
 
 def fetch_all_prometheus_metrics(url: str) -> Dict[str, List[Tuple[Dict[str, str], float]]]:
@@ -347,13 +383,27 @@ def get_oauth_association_metrics(metrics: Dict) -> Dict:
 
             if template not in matrix:
                 matrix[template] = {}
-            matrix[template][auth_type] = int(value) 
+            matrix[template][auth_type] = int(value)
 
     return {
         'matrix': matrix,
         'templates': sorted(templates),
         'auth_types': sorted(auth_types)
     }
+
+def get_integration_count_by_template(metrics: Dict) -> Dict[str, int]:
+    """Sum integration_count by template."""
+    integration_count = metrics.get('integrations_count', [])
+    result = {}
+
+    for labels, value in integration_count:
+        template = labels.get('integration_template')
+        if template:
+            if template not in result:
+                result[template] = 0
+            result[template] += int(value)
+
+    return result
 
 def get_system_info(client):
     response = client.get("server_settings")
@@ -534,7 +584,7 @@ app_ui = ui.page_fluid(
             class_="section-grid-4"
         ),
         ui.div(
-            ui.div("Content items with OAuth integration stats", class_="card-title"),
+            ui.div("Content items with OAuth integrations", class_="card-title"),
             ui.output_ui("oauth_association_metrics_table"),
             class_="content-card"
         ),
@@ -700,10 +750,21 @@ def server(input, output, session):
         matrix = associations_data['matrix']
         templates = associations_data['templates']
         auth_types = associations_data['auth_types']
+        integration_counts = get_integration_count_by_template(metrics)
+
+        def create_template_header(template):
+            count = integration_counts.get(template, 0)
+            return ui.tags.th(
+                ui.span(
+                    template,
+                    ui.span(f"Unique Integrations: {count}", class_="tooltip-text"),
+                    class_="template-header"
+                )
+            )
 
         header_row = ui.tags.tr(
             ui.tags.th(""),
-            *[ui.tags.th(template) for template in templates],
+            *[create_template_header(template) for template in templates],
             ui.tags.th("Total")
         )
 
