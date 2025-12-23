@@ -534,7 +534,7 @@ app_ui = ui.page_fluid(
             class_="section-grid-4"
         ),
         ui.div(
-            ui.div("OAuth Association Stats", class_="card-title"),
+            ui.div("Content items with OAuth integration stats", class_="card-title"),
             ui.output_ui("oauth_association_metrics_table"),
             class_="content-card"
         ),
