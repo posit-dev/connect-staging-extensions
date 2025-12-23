@@ -3,6 +3,7 @@
 from shiny import App, ui, render, reactive
 from posit.connect import Client
 from io import BytesIO, TextIOWrapper
+import os
 import requests
 from prometheus_client import parser
 from typing import Dict, List, Tuple, Optional
@@ -88,6 +89,24 @@ DASHBOARD_CSS = """
         gap: 8px;
         padding-bottom: 10px;
         border-bottom: 1px solid rgba(55, 53, 47, 0.09);
+    }
+    .card-title a {
+        color: #37352f;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .card-title a:hover {
+        color: #2383e2;
+    }
+    .external-link-icon {
+        width: 14px;
+        height: 14px;
+        opacity: 0.5;
+    }
+    .card-title a:hover .external-link-icon {
+        opacity: 1;
     }
     .section-grid-4 {
         display: grid;
@@ -180,12 +199,12 @@ DASHBOARD_CSS = """
     .section-content::-webkit-scrollbar-thumb:hover {
         background: rgba(55, 53, 47, 0.3);
     }
-    .integration-table {
+    .oauth-association-table {
         width: 100%;
         border-collapse: collapse;
         font-size: 14px;
     }
-    .integration-table th {
+    .oauth-association-table th {
         background-color: #f7f6f3;
         color: #37352f;
         font-weight: 600;
@@ -193,22 +212,22 @@ DASHBOARD_CSS = """
         text-align: left;
         border-bottom: 2px solid rgba(55, 53, 47, 0.09);
     }
-    .integration-table td {
+    .oauth-association-table td {
         padding: 12px;
         color: #37352f;
         border-bottom: 1px solid rgba(55, 53, 47, 0.09);
     }
-    .integration-table th:first-child {
+    .oauth-associatio-table th:first-child {
         border-right: 2px solid rgba(55, 53, 47, 0.09);
     }
-    .integration-table td:first-child {
+    .oauth-association-table td:first-child {
         font-weight: 500;
         border-right: 1px solid rgba(55, 53, 47, 0.09);
     }
-    .integration-table td:not(:first-child) {
+    .oauth-association-table td:not(:first-child) {
         text-align: center;
     }
-    .integration-table th:not(:first-child) {
+    .oauth-association-table th:not(:first-child) {
         text-align: center;
     }
     .content-table {
@@ -246,6 +265,42 @@ DASHBOARD_CSS = """
     }
     .content-table tbody tr:hover {
         background-color: #f7f6f3;
+    }
+    .template-header {
+        position: relative;
+        cursor: help;
+    }
+    .template-header .tooltip-text {
+        visibility: hidden;
+        background-color: #37352f;
+        color: #fff;
+        text-align: center;
+        border-radius: 6px;
+        padding: 8px 12px;
+        position: absolute;
+        z-index: 1;
+        bottom: 125%;
+        left: 50%;
+        transform: translateX(-50%);
+        white-space: nowrap;
+        font-size: 12px;
+        font-weight: 400;
+        opacity: 0;
+        transition: opacity 0.2s;
+    }
+    .template-header .tooltip-text::after {
+        content: "";
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        margin-left: -5px;
+        border-width: 5px;
+        border-style: solid;
+        border-color: #37352f transparent transparent transparent;
+    }
+    .template-header:hover .tooltip-text {
+        visibility: visible;
+        opacity: 1;
     }
 """
 
@@ -307,16 +362,20 @@ def get_content_stats(metrics: Dict) -> Dict:
 
     return stats
 
-def get_integration_metrics(metrics: Dict) -> Dict:
-    integrations_count = metrics.get('integrations_count', [])
+def get_oauth_association_metrics(metrics: Dict) -> Dict:
+    associations_count = metrics.get('associations_count', [])
 
     matrix = {}
     templates = set()
     auth_types = set()
 
-    for labels, value in integrations_count:
+    for labels, value in associations_count:
         template = labels.get('integration_template')
         auth_type = labels.get('integration_auth_type')
+
+        # Collapse "Visitor API Key" into "Viewer" for this dashboard
+        if auth_type == "Visitor API Key":
+            auth_type = "Viewer"
 
         if template and auth_type:
             templates.add(template)
@@ -331,6 +390,20 @@ def get_integration_metrics(metrics: Dict) -> Dict:
         'templates': sorted(templates),
         'auth_types': sorted(auth_types)
     }
+
+def get_integration_count_by_template(metrics: Dict) -> Dict[str, int]:
+    """Sum integration_count by template."""
+    integration_count = metrics.get('integrations_count', [])
+    result = {}
+
+    for labels, value in integration_count:
+        template = labels.get('integration_template')
+        if template:
+            if template not in result:
+                result[template] = 0
+            result[template] += int(value)
+
+    return result
 
 def get_system_info(client):
     response = client.get("server_settings")
@@ -461,6 +534,36 @@ def create_key_value_list(items_dict):
         for label, value in items_dict.items()
     ]
 
+def external_link_icon():
+    """Create an SVG external link icon."""
+    return ui.HTML(
+        '<svg class="external-link-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+        '<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>'
+        '<polyline points="15 3 21 3 21 9"/>'
+        '<line x1="10" y1="14" x2="21" y2="3"/>'
+        '</svg>'
+    )
+
+def create_linked_card_title(title: str, url: str):
+    """Create a card title with an external link."""
+    return ui.div(
+        ui.tags.a(
+            title,
+            external_link_icon(),
+            href=url,
+            target="_blank"
+        ),
+        class_="card-title"
+    )
+
+def get_server_base_url() -> str:
+    """Get the base URL of the Connect server from environment."""
+    url = os.environ.get('CONNECT_SERVER', '')
+    # Remove trailing slash if present
+    if url.endswith('/'):
+        url = url[:-1]
+    return url
+
 app_ui = ui.page_fluid(
     ui.tags.style(DASHBOARD_CSS),
     ui.div(
@@ -481,8 +584,8 @@ app_ui = ui.page_fluid(
             class_="section-grid-4"
         ),
         ui.div(
-            ui.div("OAuth Integration Stats", class_="card-title"),
-            ui.output_ui("integration_metrics_table"),
+            ui.div("Content items with OAuth integrations", class_="card-title"),
+            ui.output_ui("oauth_association_metrics_table"),
             class_="content-card"
         ),
         ui.div(
@@ -501,6 +604,7 @@ app_ui = ui.page_fluid(
 def server(input, output, session):
     metrics = fetch_all_prometheus_metrics("http://localhost:3232/metrics")
     client = Client()
+    server_base_url = get_server_base_url()
 
     @output
     @render.ui
@@ -641,15 +745,26 @@ def server(input, output, session):
 
     @output
     @render.ui
-    def integration_metrics_table():
-        integration_data = get_integration_metrics(metrics)
-        matrix = integration_data['matrix']
-        templates = integration_data['templates']
-        auth_types = integration_data['auth_types']
+    def oauth_association_metrics_table():
+        associations_data = get_oauth_association_metrics(metrics)
+        matrix = associations_data['matrix']
+        templates = associations_data['templates']
+        auth_types = associations_data['auth_types']
+        integration_counts = get_integration_count_by_template(metrics)
+
+        def create_template_header(template):
+            count = integration_counts.get(template, 0)
+            return ui.tags.th(
+                ui.span(
+                    template,
+                    ui.span(f"Unique Integrations: {count}", class_="tooltip-text"),
+                    class_="template-header"
+                )
+            )
 
         header_row = ui.tags.tr(
             ui.tags.th(""),
-            *[ui.tags.th(template) for template in templates],
+            *[create_template_header(template) for template in templates],
             ui.tags.th("Total")
         )
 
@@ -668,7 +783,7 @@ def server(input, output, session):
         return ui.tags.table(
             ui.tags.thead(header_row),
             ui.tags.tbody(*table_rows),
-            class_="integration-table"
+            class_="oauth-association-table"
         )
 
     @output
@@ -693,9 +808,10 @@ def server(input, output, session):
             )
         ]
 
-        col1 = create_content_card(
-            "Currently Running",
-            ui.div(*running_items, class_="running-items-container")
+        col1 = ui.div(
+            ui.div("Currently Running", class_="card-title"),
+            ui.div(*running_items, class_="running-items-container"),
+            class_="content-card"
         )
 
         col2 = ui.div(
@@ -741,11 +857,22 @@ def server(input, output, session):
         process_count = get_process_count_by_tag(metrics)
         sorted_process_count = dict(sorted(process_count['by_tag'].items(), key=lambda x: x[1], reverse=True))
         breakdown_items = create_key_value_list(sorted_process_count)
+        processes_url = f"{server_base_url}/connect/#/system/processes"
 
         m = ui.modal(
             ui.div(
                 ui.div("Process Breakdown by Tag", style="font-size: 18px; font-weight: 600; margin-bottom: 16px; color: #37352f;"),
                 ui.div(*breakdown_items, class_="section-content"),
+                ui.div(
+                    ui.tags.a(
+                        "View all processes ",
+                        external_link_icon(),
+                        href=processes_url,
+                        target="_blank",
+                        style="color: #2383e2; text-decoration: none; font-size: 14px; display: inline-flex; align-items: center; gap: 4px;"
+                    ),
+                    style="margin-top: 16px; padding-top: 12px; border-top: 1px solid rgba(55, 53, 47, 0.09);"
+                ),
                 style="padding: 10px;"
             ),
             title=None,
@@ -760,11 +887,22 @@ def server(input, output, session):
         schedule_by_status = get_schedule_count_by_status(metrics)
         sorted_schedule = dict(sorted(schedule_by_status.items(), key=lambda x: x[1], reverse=True))
         breakdown_items = create_key_value_list(sorted_schedule)
+        schedules_url = f"{server_base_url}/connect/#/system/schedules"
 
         m = ui.modal(
             ui.div(
                 ui.div("Schedule by Status", style="font-size: 18px; font-weight: 600; margin-bottom: 16px; color: #37352f;"),
                 ui.div(*breakdown_items, class_="section-content"),
+                ui.div(
+                    ui.tags.a(
+                        "View all schedules ",
+                        external_link_icon(),
+                        href=schedules_url,
+                        target="_blank",
+                        style="color: #2383e2; text-decoration: none; font-size: 14px; display: inline-flex; align-items: center; gap: 4px;"
+                    ),
+                    style="margin-top: 16px; padding-top: 12px; border-top: 1px solid rgba(55, 53, 47, 0.09);"
+                ),
                 style="padding: 10px;"
             ),
             title=None,
