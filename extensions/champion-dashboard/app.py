@@ -334,6 +334,21 @@ def get_user_activity_metrics(metrics: Dict) -> Dict[str, Optional[int]]:
 
     return result
 
+def get_user_activity_by_role_metrics(metrics: Dict) -> Dict[str, Dict[str, Optional[int]]]:
+    users_active_by_role = metrics.get('users_active_by_role', [])
+    roles = ['administrator', 'publisher', 'viewer']
+    windows = ['24h', '7d', '30d', '1y']
+
+    result = {role: {window: None for window in windows} for role in roles}
+
+    for labels, value in users_active_by_role:
+        role = labels.get('role')
+        window = labels.get('window')
+        if role in result and window in windows:
+            result[role][window] = int(value)
+
+    return result
+
 def get_content_stats(metrics: Dict) -> Dict:
     content_count = metrics.get('content_count', [])
 
@@ -580,6 +595,11 @@ app_ui = ui.page_fluid(
             class_="content-card"
         ),
         ui.div(
+            ui.div("Active Users by Role", class_="card-title"),
+            ui.output_ui("active_users_by_role"),
+            class_="content-card"
+        ),
+        ui.div(
             ui.output_ui("content_stats_grid"),
             class_="section-grid-4"
         ),
@@ -619,6 +639,37 @@ def server(input, output, session):
             )
             for label, key in stat_labels
         ]
+
+    @output
+    @render.ui
+    def active_users_by_role():
+        role_metrics = get_user_activity_by_role_metrics(metrics)
+        windows = [('24h', 'DAU'), ('7d', 'WAU'), ('30d', 'MAU'), ('1y', 'YAU')]
+        role_labels = {
+            'administrator': 'Administrators',
+            'publisher': 'Publishers',
+            'viewer': 'Viewers'
+        }
+
+        header_row = ui.tags.tr(
+            ui.tags.th("Role"),
+            *[ui.tags.th(label) for _, label in windows]
+        )
+
+        table_rows = []
+        for role in ['administrator', 'publisher', 'viewer']:
+            cells = [ui.tags.td(role_labels[role])]
+            for window, _ in windows:
+                value = role_metrics[role].get(window)
+                display_value = str(value) if value is not None else "0"
+                cells.append(ui.tags.td(display_value))
+            table_rows.append(ui.tags.tr(*cells))
+
+        return ui.tags.table(
+            ui.tags.thead(header_row),
+            ui.tags.tbody(*table_rows),
+            class_="oauth-association-table"
+        )
 
     @output
     @render.ui
