@@ -199,12 +199,12 @@ DASHBOARD_CSS = """
     .section-content::-webkit-scrollbar-thumb:hover {
         background: rgba(55, 53, 47, 0.3);
     }
-    .oauth-association-table {
+    .data-table {
         width: 100%;
         border-collapse: collapse;
         font-size: 14px;
     }
-    .oauth-association-table th {
+    .data-table th {
         background-color: #f7f6f3;
         color: #37352f;
         font-weight: 600;
@@ -212,22 +212,22 @@ DASHBOARD_CSS = """
         text-align: left;
         border-bottom: 2px solid rgba(55, 53, 47, 0.09);
     }
-    .oauth-association-table td {
+    .data-table td {
         padding: 12px;
         color: #37352f;
         border-bottom: 1px solid rgba(55, 53, 47, 0.09);
     }
-    .oauth-associatio-table th:first-child {
+    .data-table th:first-child {
         border-right: 2px solid rgba(55, 53, 47, 0.09);
     }
-    .oauth-association-table td:first-child {
+    .data-table td:first-child {
         font-weight: 500;
         border-right: 1px solid rgba(55, 53, 47, 0.09);
     }
-    .oauth-association-table td:not(:first-child) {
+    .data-table td:not(:first-child) {
         text-align: center;
     }
-    .oauth-association-table th:not(:first-child) {
+    .data-table th:not(:first-child) {
         text-align: center;
     }
     .content-table {
@@ -668,7 +668,7 @@ def server(input, output, session):
         return ui.tags.table(
             ui.tags.thead(header_row),
             ui.tags.tbody(*table_rows),
-            class_="oauth-association-table"
+            class_="data-table"
         )
 
     @output
@@ -834,7 +834,7 @@ def server(input, output, session):
         return ui.tags.table(
             ui.tags.thead(header_row),
             ui.tags.tbody(*table_rows),
-            class_="oauth-association-table"
+            class_="data-table"
         )
 
     @output
