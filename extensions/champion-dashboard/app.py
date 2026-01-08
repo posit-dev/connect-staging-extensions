@@ -323,31 +323,31 @@ def fetch_all_prometheus_metrics(url: str) -> Dict[str, List[Tuple[Dict[str, str
         print(f"Error fetching metrics from {url}: {e}")
         return {}
 
-def get_user_activity_metrics(metrics: Dict) -> Dict[str, Optional[int]]:
+def get_user_activity_metrics(metrics: Dict) -> Dict:
+    """Parse users_active metric which includes role labels.
+
+    Returns both totals (summed across roles) and by-role breakdown.
+    """
     users_active = metrics.get('users_active', [])
-    result = {'24h': None, '7d': None, '30d': None, '1y': None}
-
-    for labels, value in users_active:
-        window = labels.get('window')
-        if window in result:
-            result[window] = int(value)
-
-    return result
-
-def get_user_activity_by_role_metrics(metrics: Dict) -> Dict[str, Dict[str, Optional[int]]]:
-    users_active_by_role = metrics.get('users_active_by_role', [])
     roles = ['administrator', 'publisher', 'viewer']
     windows = ['24h', '7d', '30d', '1y']
 
-    result = {role: {window: None for window in windows} for role in roles}
+    by_role = {role: {window: None for window in windows} for role in roles}
+    totals = {window: 0 for window in windows}
 
-    for labels, value in users_active_by_role:
+    for labels, value in users_active:
         role = labels.get('role')
         window = labels.get('window')
-        if role in result and window in windows:
-            result[role][window] = int(value)
+        if window in windows:
+            int_value = int(value)
+            if role in by_role:
+                by_role[role][window] = int_value
+            totals[window] += int_value
 
-    return result
+    return {
+        'totals': totals,
+        'by_role': by_role
+    }
 
 def get_content_stats(metrics: Dict) -> Dict:
     content_count = metrics.get('content_count', [])
@@ -630,11 +630,12 @@ def server(input, output, session):
     @render.ui
     def active_user_stats():
         user_metrics = get_user_activity_metrics(metrics)
+        totals = user_metrics['totals']
         stat_labels = [("DAU (24h)", '24h'), ("WAU (7d)", '7d'), ("MAU (30d)", '30d'), ("YAU (1y)", '1y')]
         return [
             ui.div(
                 ui.div(label, class_="stat-box-title"),
-                ui.div(str(user_metrics.get(key) or 0), class_="stat-box-value"),
+                ui.div(str(totals.get(key) or 0), class_="stat-box-value"),
                 class_="stat-box"
             )
             for label, key in stat_labels
@@ -643,7 +644,8 @@ def server(input, output, session):
     @output
     @render.ui
     def active_users_by_role():
-        role_metrics = get_user_activity_by_role_metrics(metrics)
+        user_metrics = get_user_activity_metrics(metrics)
+        by_role = user_metrics['by_role']
         windows = [('24h', 'DAU'), ('7d', 'WAU'), ('30d', 'MAU'), ('1y', 'YAU')]
         role_labels = {
             'administrator': 'Administrators',
@@ -660,7 +662,7 @@ def server(input, output, session):
         for role in ['administrator', 'publisher', 'viewer']:
             cells = [ui.tags.td(role_labels[role])]
             for window, _ in windows:
-                value = role_metrics[role].get(window)
+                value = by_role[role].get(window)
                 display_value = str(value) if value is not None else "0"
                 cells.append(ui.tags.td(display_value))
             table_rows.append(ui.tags.tr(*cells))
