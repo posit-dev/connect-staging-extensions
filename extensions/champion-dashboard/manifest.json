@@ -25,8 +25,8 @@
     "homepage": "https://github.com/posit-dev/connect-staging-extensions/tree/main/extensions/champion-dashboard",
     "category": "example",
     "tags": ["python"],
-    "minimumConnectVersion": "2025.11.0",
-    "version": "1.0.7"
+    "minimumConnectVersion": "2026.02.0",
+    "version": "1.0.8"
   },
   "files": {
     "requirements.txt": {
