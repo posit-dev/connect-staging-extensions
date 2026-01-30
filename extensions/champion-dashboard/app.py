@@ -31,6 +31,11 @@ DASHBOARD_CSS = """
         grid-template-columns: repeat(4, 1fr);
         gap: 16px;
     }
+    .bundle-stats-container {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 16px;
+    }
     .stat-box {
         background-color: #ffffff;
         padding: 24px;
@@ -349,6 +354,22 @@ def get_user_activity_metrics(metrics: Dict) -> Dict:
         'by_role': by_role
     }
 
+def get_bundles_uploaded_metrics(metrics: Dict) -> Dict:
+    """Parse bundles_uploaded metric which includes time window labels.
+
+    Returns totals for each time window (24h, 7d, 30d, 1y, all).
+    """
+    bundles_uploaded = metrics.get('bundles_uploaded', [])
+    windows = ['24h', '7d', '30d', '1y', 'all']
+    totals = {window: 0 for window in windows}
+
+    for labels, value in bundles_uploaded:
+        window = labels.get('window')
+        if window in windows:
+            totals[window] = int(value)
+
+    return {'totals': totals}
+
 def get_content_stats(metrics: Dict) -> Dict:
     content_count = metrics.get('content_count', [])
 
@@ -600,6 +621,14 @@ app_ui = ui.page_fluid(
             class_="content-card"
         ),
         ui.div(
+            ui.div("Bundles Uploaded", class_="card-title"),
+            ui.div(
+                ui.output_ui("bundles_uploaded_stats"),
+                class_="bundle-stats-container"
+            ),
+            class_="content-card"
+        ),
+        ui.div(
             ui.output_ui("content_stats_grid"),
             class_="section-grid-4"
         ),
@@ -672,6 +701,27 @@ def server(input, output, session):
             ui.tags.tbody(*table_rows),
             class_="data-table"
         )
+
+    @output
+    @render.ui
+    def bundles_uploaded_stats():
+        bundle_metrics = get_bundles_uploaded_metrics(metrics)
+        totals = bundle_metrics['totals']
+        stat_labels = [
+            ("24 Hours", '24h'),
+            ("7 Days", '7d'),
+            ("30 Days", '30d'),
+            ("1 Year", '1y'),
+            ("All Time", 'all')
+        ]
+        return [
+            ui.div(
+                ui.div(label, class_="stat-box-title"),
+                ui.div(str(totals.get(key) or 0), class_="stat-box-value"),
+                class_="stat-box"
+            )
+            for label, key in stat_labels
+        ]
 
     @output
     @render.ui
