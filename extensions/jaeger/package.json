@@ -1,0 +1,20 @@
+{
+  "name": "jaeger-extension",
+  "version": "0.1.0",
+  "description": "Jaeger tracing backend with OTLP ingestion for Posit Connect",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "install:all": "npm run install:ui && pip install -r requirements.txt",
+    "install:ui": "cd jaeger-ui && npm install",
+    "dev": "concurrently -n backend,frontend -c blue,green \"npm:dev:backend\" \"npm:dev:frontend\"",
+    "dev:backend": ".venv/bin/uvicorn app:app --reload --host 0.0.0.0 --port 8000",
+    "dev:frontend": "cd jaeger-ui && npm start",
+    "build": "cd jaeger-ui && npm run build && npm run copy:build",
+    "copy:build": "rm -rf dist && cp -r jaeger-ui/packages/jaeger-ui/build dist",
+    "clean": "rm -rf dist jaeger-ui/packages/jaeger-ui/build jaeger-ui/packages/plexus/lib jaeger.db __pycache__"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

@@ -1,0 +1,75 @@
+{
+  "version": 1,
+  "locale": "en_US.UTF-8",
+  "metadata": {
+    "appmode": "python-fastapi",
+    "entrypoint": "app"
+  },
+  "python": {
+    "version": "3.11.11",
+    "package_manager": {
+      "name": "pip",
+      "version": "24.3.1",
+      "package_file": "requirements.txt"
+    }
+  },
+  "files": {
+    "requirements.txt": {
+      "checksum": "9af21719e21753116c41d80e11bf85ed"
+    },
+    ".claude/settings.local.json": {
+      "checksum": "b188ca44e85c0e6bc9fd7d78986251db"
+    },
+    ".gitignore": {
+      "checksum": "a3ebe39b080e7c8dba925fd966c8bdd9"
+    },
+    ".posit/publish/deployments/deployment-D6JB.toml": {
+      "checksum": "7305d1a5252d603f1147dcbcc667dc18"
+    },
+    ".posit/publish/jaeger-S9EE.toml": {
+      "checksum": "1e1e3ee87f7ccf9a2c292e85f38ca432"
+    },
+    ".rscignore": {
+      "checksum": "4d55c2c92fdcc5835110c6b800f09cf7"
+    },
+    "app.py": {
+      "checksum": "10014a8aa38a03f9aa3ab8490ba366f9"
+    },
+    "database.py": {
+      "checksum": "0c04e127f6c5b3c04b89e5fadc43890a"
+    },
+    "dist/index.html": {
+      "checksum": "c646969a29bc1a4ba90aafd8369024d9"
+    },
+    "dist/static/favicon-BxcVf0am.ico": {
+      "checksum": "51287d07abb67e25121f5e427091044d"
+    },
+    "dist/static/index-DLtBYg_e.js": {
+      "checksum": "a4ca3bcc0bac650636abbef704d47c79"
+    },
+    "dist/static/index-legacy-BIEGXWk6.js": {
+      "checksum": "4177a067dc8867a141a7ae15da58079c"
+    },
+    "dist/static/index-nMrH7vCe.css": {
+      "checksum": "2fbc6bfb7fbe9905ff0cde22fa1881b7"
+    },
+    "dist/static/jaeger-logo-CNZsoUdk.svg": {
+      "checksum": "a7093b12e8a9970b9e82a97dd39d12cc"
+    },
+    "dist/static/monitor-BYreg9RK.png": {
+      "checksum": "c9164c967f4881884753564e6b02c492"
+    },
+    "dist/static/polyfills-legacy-eC6-qqte.js": {
+      "checksum": "0ef7047ea484500e65a1832c31c6989f"
+    },
+    "otlp_service.py": {
+      "checksum": "6968622becb6316470fe69beceaace2e"
+    },
+    "query_service.py": {
+      "checksum": "80d26d42244e3ff81730635ee511490e"
+    },
+    "transformers.py": {
+      "checksum": "3dfdbb8ba12244993ad0498b4669a2da"
+    }
+  }
+}
