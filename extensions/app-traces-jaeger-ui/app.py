@@ -1,0 +1,604 @@
+"""
+Jaeger UI Adapter for Posit Connect Traces
+
+This FastAPI application acts as a proxy between Jaeger UI and Connect's traces endpoint,
+translating the API formats to make them compatible.
+"""
+
+import os
+import json
+import httpx
+import posixpath
+from typing import Optional, List, Dict, Any
+from datetime import datetime
+from urllib.parse import urljoin
+from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi.responses import JSONResponse, HTMLResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.templating import Jinja2Templates
+from pydantic import BaseModel
+from posit import connect
+
+# Jaeger UI index.html served as processable template to populate BASE_URL
+templates = Jinja2Templates(directory="templates")
+
+# Required configuration from environment variables to load traces
+INSTRUMENTED_CONTENT_GUID = os.getenv("INSTRUMENTED_CONTENT_GUID", "")
+INSTRUMENTED_JOB_KEY = os.getenv("INSTRUMENTED_JOB_KEY", "")
+
+# Connect injects CONNECT_SERVER and CONNECT_CONTENT_GUID
+# which are used later to determine proper api paths for Jaeger UI
+CONNECT_SERVER = os.getenv("CONNECT_SERVER", "")
+CONNECT_API_KEY = os.getenv("CONNECT_API_KEY", "")
+CONNECT_CONTENT_GUID = os.getenv("CONNECT_CONTENT_GUID", "")
+
+app = FastAPI(
+    title="Connect Traces Viewer",
+    description="Jaeger UI adapter for Posit Connect job traces",
+    version="1.0.0"
+)
+
+# Enable CORS for development
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+class SpanData(BaseModel):
+    """Represents a span in OpenTelemetry format"""
+    trace_id: str
+    span_id: str
+    name: str
+    start_time_unix_nano: str
+    end_time_unix_nano: Optional[str] = None
+    parent_span_id: Optional[str] = None
+    kind: Optional[int] = None
+    status: Optional[Dict[str, Any]] = None
+
+
+def fetch_traces_from_connect(
+    trace_id: Optional[str] = None,
+    limit: int = 1000,
+    offset: int = 0,
+    start_time_min: Optional[str] = None,
+) -> tuple[List[Dict[str, Any]], int, int]:
+    """
+    Fetch traces from Connect's traces endpoint.
+
+    Returns:
+        (traces, total_count, file_size)
+    """
+    if not INSTRUMENTED_CONTENT_GUID or not INSTRUMENTED_JOB_KEY:
+        raise HTTPException(
+            status_code=500,
+            detail="Missing configuration. Set CONNECT_API_KEY, INSTRUMENTED_CONTENT_GUID, and INSTRUMENTED_JOB_KEY environment variables."
+        )
+
+    connectClient = connect.Client()
+    path = f"v1/content/{INSTRUMENTED_CONTENT_GUID}/jobs/{INSTRUMENTED_JOB_KEY}/traces"
+    params = {
+        "limit": limit,
+        "offset": offset,
+    }
+
+    if trace_id:
+        params["trace_id"] = trace_id
+
+    if start_time_min:
+        # Convert RFC3339 to Unix timestamp if needed
+        try:
+            dt = datetime.fromisoformat(start_time_min.replace('Z', '+00:00'))
+            params["since"] = str(int(dt.timestamp()))
+        except Exception:
+            pass  # If conversion fails, skip the filter
+
+    try:
+        with connectClient.get(path, params=params, stream=True) as response:
+            response.raise_for_status()
+
+            # Get headers
+            total_count = int(response.headers.get("X-Total-Count", "0"))
+            file_size = int(response.headers.get("X-Trace-File-Size", "0"))
+
+            # Read the response content
+            # The posit.connect library uses requests under the hood
+            text = response.text.strip()
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to fetch traces from Connect: {str(e)}"
+        )
+
+    # Parse NDJSON response
+    traces = []
+    skipped_lines = 0
+    if text:
+        for line_num, line in enumerate(text.split('\n'), 1):
+            line = line.strip()
+            if line:
+                try:
+                    traces.append(json.loads(line))
+                except json.JSONDecodeError as e:
+                    # Log but continue - partial lines can happen with streaming
+                    # This is expected for incomplete lines at stream boundaries
+                    skipped_lines += 1
+                    continue
+
+    return traces, total_count, file_size
+
+
+def convert_hex_to_base64(hex_string: str) -> str:
+    """Convert hex trace/span ID to base64 for Jaeger UI"""
+    try:
+        bytes_data = bytes.fromhex(hex_string)
+        import base64
+        return base64.b64encode(bytes_data).decode('utf-8')
+    except Exception:
+        return hex_string
+
+
+def transform_otlp_to_jaeger_format(otlp_traces: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """
+    Transform OpenTelemetry traces to Jaeger's expected format.
+
+    The Connect endpoint returns OTLP format, which is what Jaeger v3 uses,
+    but we need to ensure proper field naming and structure.
+    """
+    jaeger_traces = []
+
+    for otlp_trace in otlp_traces:
+        # OTLP format is already compatible, but we need to ensure it's structured correctly
+        # and extract individual traces by trace ID
+
+        resource_spans = otlp_trace.get("resourceSpans", [])
+
+        for resource_span in resource_spans:
+            scope_spans = resource_span.get("scopeSpans", [])
+
+            for scope_span in scope_spans:
+                spans = scope_span.get("spans", [])
+
+                for span in spans:
+                    # Group spans by trace ID
+                    trace_id = span.get("traceId", "")
+
+                    # Find or create trace object
+                    trace_obj = None
+                    for t in jaeger_traces:
+                        if t.get("traceID") == trace_id:
+                            trace_obj = t
+                            break
+
+                    if not trace_obj:
+                        trace_obj = {
+                            "traceID": trace_id,
+                            "spans": [],
+                            "processes": {},
+                            "warnings": None
+                        }
+                        jaeger_traces.append(trace_obj)
+
+                    # Convert span to Jaeger format
+                    process_id = f"p{len(trace_obj['processes'])}"
+
+                    # Add process info (service)
+                    if process_id not in trace_obj["processes"]:
+                        resource_attrs = resource_span.get("resource", {}).get("attributes", [])
+                        service_name = "unknown"
+                        tags = []
+
+                        for attr in resource_attrs:
+                            key = attr.get("key", "")
+                            value = attr.get("value", {})
+
+                            if key == "service.name":
+                                service_name = value.get("stringValue", "unknown")
+
+                            # Add as tag
+                            tag_value = None
+                            if "stringValue" in value:
+                                tag_value = value["stringValue"]
+                            elif "intValue" in value:
+                                tag_value = value["intValue"]
+                            elif "boolValue" in value:
+                                tag_value = value["boolValue"]
+
+                            if tag_value is not None:
+                                tags.append({
+                                    "key": key,
+                                    "type": "string" if isinstance(tag_value, str) else "int64" if isinstance(tag_value, int) else "bool",
+                                    "value": tag_value
+                                })
+
+                        trace_obj["processes"][process_id] = {
+                            "serviceName": service_name,
+                            "tags": tags
+                        }
+
+                    # Convert span
+                    jaeger_span = {
+                        "traceID": trace_id,
+                        "spanID": span.get("spanId", ""),
+                        "operationName": span.get("name", ""),
+                        "processID": process_id,
+                        "startTime": int(span.get("startTimeUnixNano", "0")) // 1000,  # Convert to microseconds
+                        "duration": 0,
+                        "tags": [],
+                        "logs": [],
+                        "references": []
+                    }
+
+                    # Calculate duration
+                    if "endTimeUnixNano" in span:
+                        start = int(span["startTimeUnixNano"])
+                        end = int(span["endTimeUnixNano"])
+                        jaeger_span["duration"] = (end - start) // 1000  # Convert to microseconds
+
+                    # Add parent reference if exists
+                    if "parentSpanId" in span and span["parentSpanId"]:
+                        jaeger_span["references"].append({
+                            "refType": "CHILD_OF",
+                            "traceID": trace_id,
+                            "spanID": span["parentSpanId"]
+                        })
+
+                    # Add span attributes as tags
+                    for attr in span.get("attributes", []):
+                        key = attr.get("key", "")
+                        value = attr.get("value", {})
+
+                        tag_value = None
+                        tag_type = "string"
+
+                        if "stringValue" in value:
+                            tag_value = value["stringValue"]
+                            tag_type = "string"
+                        elif "intValue" in value:
+                            tag_value = value["intValue"]
+                            tag_type = "int64"
+                        elif "boolValue" in value:
+                            tag_value = value["boolValue"]
+                            tag_type = "bool"
+
+                        if tag_value is not None:
+                            jaeger_span["tags"].append({
+                                "key": key,
+                                "type": tag_type,
+                                "value": tag_value
+                            })
+
+                    trace_obj["spans"].append(jaeger_span)
+
+    return jaeger_traces
+
+# Jaeger UI is a SPA. Including all routes needed by Jaeger UI to serve the HTML template.
+@app.get("/", response_class=HTMLResponse)
+@app.get("/search", response_class=HTMLResponse)
+@app.get("/trace/{file_path:path}", response_class=HTMLResponse)
+@app.get("/dependencies", response_class=HTMLResponse)
+@app.get("/monitor", response_class=HTMLResponse)
+async def jaeger_index(request: Request):
+    # Check if required environment variables are set
+    if not INSTRUMENTED_CONTENT_GUID or not INSTRUMENTED_JOB_KEY:
+        return templates.TemplateResponse(
+            request=request,
+            name="instructions.html",
+            context={
+                "has_content_guid": bool(INSTRUMENTED_CONTENT_GUID),
+                "has_job_key": bool(INSTRUMENTED_JOB_KEY)
+            }
+        )
+
+    app_base_url = urljoin(CONNECT_SERVER, posixpath.join("content", CONNECT_CONTENT_GUID))
+    assets_base_url = urljoin(app_base_url, "static")
+    return templates.TemplateResponse(
+        request=request, name="index.html", context={"app_base_url": app_base_url, "assets_base_url": assets_base_url}
+    )
+
+@app.get("/api/traces")
+async def search_traces_legacy(
+    service: Optional[str] = Query(None),
+    operation: Optional[str] = Query(None),
+    start: Optional[int] = Query(None, description="Start time in microseconds"),
+    end: Optional[int] = Query(None, description="End time in microseconds"),
+    limit: Optional[int] = Query(20),
+    lookback: Optional[str] = Query(None),
+    minDuration: Optional[str] = Query(None),
+    maxDuration: Optional[str] = Query(None),
+):
+    """
+    Legacy Jaeger API endpoint: GET /api/traces
+    This is called by Jaeger UI and expects Jaeger's internal format (not OTLP).
+
+    Note: We ignore time filters (start/end/lookback) since we're viewing
+    historical traces from a completed job, not a live tracing system.
+    """
+    # Convert start time from microseconds to RFC3339 format if provided
+    start_time_min = None
+    if start:
+        # Convert microseconds to seconds
+        start_seconds = start / 1_000_000
+        # Create datetime and format as RFC3339
+        start_dt = datetime.fromtimestamp(start_seconds)
+        start_time_min = start_dt.isoformat() + 'Z'
+
+    # Fetch traces from Connect
+    traces, total_count, file_size = fetch_traces_from_connect(
+        limit=limit,
+        start_time_min=start_time_min
+    )
+
+    # Transform to Jaeger's internal format (with spans array)
+    jaeger_traces = transform_otlp_to_jaeger_format(traces)
+
+    # Filter by service/operation if specified
+    if service or operation:
+        filtered_traces = []
+        for trace in jaeger_traces:
+            match = False
+            for span in trace.get("spans", []):
+                process = trace.get("processes", {}).get(span.get("processID", ""), {})
+                span_service = process.get("serviceName", "")
+                span_operation = span.get("operationName", "")
+
+                if service and service != span_service:
+                    continue
+                if operation and operation != span_operation:
+                    continue
+
+                match = True
+                break
+
+            if match:
+                filtered_traces.append(trace)
+
+        jaeger_traces = filtered_traces
+
+    # Legacy API returns {"data": [...]} with Jaeger format traces
+    return JSONResponse({
+        "data": jaeger_traces
+    })
+
+
+@app.get("/api/v3/traces/{trace_id}")
+async def get_trace(trace_id: str):
+    """
+    Get a specific trace by ID.
+    Jaeger UI endpoint: GET /api/v3/traces/{trace_id}
+    """
+    traces, _, _ = fetch_traces_from_connect(trace_id=trace_id, limit=0)
+
+    if not traces:
+        raise HTTPException(status_code=404, detail="Trace not found")
+
+    # Transform to Jaeger format
+    jaeger_traces = transform_otlp_to_jaeger_format(traces)
+
+    if not jaeger_traces:
+        raise HTTPException(status_code=404, detail="Trace not found")
+
+    # Return the first matching trace
+    return JSONResponse({
+        "result": {
+            "resourceSpans": traces[0].get("resourceSpans", [])
+        }
+    })
+
+
+@app.get("/api/v3/traces")
+async def search_traces(
+    service: Optional[str] = Query(None, description="Service name"),
+    operation: Optional[str] = Query(None, description="Operation name"),
+    start_time_min: Optional[str] = Query(None, description="Start time minimum (RFC3339)"),
+    start_time_max: Optional[str] = Query(None, description="Start time maximum (RFC3339)"),
+    num_traces: Optional[int] = Query(100, description="Number of traces to return"),
+):
+    """
+    Search for traces.
+    Jaeger UI endpoint: GET /api/v3/traces
+
+    Returns: Object with data array containing traces
+    """
+    # Fetch traces from Connect
+    traces, total_count, file_size = fetch_traces_from_connect(
+        limit=num_traces,
+        start_time_min=start_time_min
+    )
+
+    # Jaeger API v3 uses OTLP format (OpenTelemetry Protocol)
+    # The data from Connect is already in OTLP format, so we just need to wrap it
+    # Extract all resourceSpans from all traces
+    all_resource_spans = []
+    for trace in traces:
+        resource_spans = trace.get("resourceSpans", [])
+
+        # Filter by service/operation if specified
+        if service or operation:
+            filtered_rs = []
+            for rs in resource_spans:
+                # Check service name in resource attributes
+                service_name = None
+                for attr in rs.get("resource", {}).get("attributes", []):
+                    if attr.get("key") == "service.name":
+                        service_name = attr.get("value", {}).get("stringValue")
+                        break
+
+                if service and service_name != service:
+                    continue
+
+                # If operation filter is set, check spans
+                if operation:
+                    scope_spans = rs.get("scopeSpans", [])
+                    has_matching_operation = False
+                    for ss in scope_spans:
+                        for span in ss.get("spans", []):
+                            if span.get("name") == operation:
+                                has_matching_operation = True
+                                break
+                        if has_matching_operation:
+                            break
+
+                    if not has_matching_operation:
+                        continue
+
+                filtered_rs.append(rs)
+
+            all_resource_spans.extend(filtered_rs)
+        else:
+            all_resource_spans.extend(resource_spans)
+
+    # Return in Jaeger API v3 format
+    return JSONResponse({
+        "result": {
+            "resourceSpans": all_resource_spans
+        }
+    })
+
+
+@app.get("/api/v3/services")
+async def get_services():
+    """
+    Get list of services.
+    Jaeger UI endpoint: GET /api/v3/services
+
+    Returns: Array of service names (not wrapped in result object)
+    """
+    # Fetch a sample of traces to extract services
+    traces, _, _ = fetch_traces_from_connect(limit=1000)
+
+    services = set()
+    for trace in traces:
+        for resource_span in trace.get("resourceSpans", []):
+            for attr in resource_span.get("resource", {}).get("attributes", []):
+                if attr.get("key") == "service.name":
+                    service_name = attr.get("value", {}).get("stringValue")
+                    if service_name:
+                        services.add(service_name)
+
+    # Jaeger UI expects {"services": [...]} format
+    return JSONResponse({
+        "services": sorted(list(services))
+    })
+
+
+@app.get("/api/v3/operations")
+async def get_operations(
+    service: str = Query(..., description="Service name")
+):
+    """
+    Get list of operations for a service.
+    Jaeger UI endpoint: GET /api/v3/operations
+
+    Returns: Array of operation objects (not wrapped in result object)
+    """
+    # Fetch traces and extract operations for the service
+    traces, _, _ = fetch_traces_from_connect(limit=1000)
+
+    operations = set()
+    for trace in traces:
+        for resource_span in trace.get("resourceSpans", []):
+            # Check if this resource belongs to the requested service
+            service_name = None
+            for attr in resource_span.get("resource", {}).get("attributes", []):
+                if attr.get("key") == "service.name":
+                    service_name = attr.get("value", {}).get("stringValue")
+                    break
+
+            if service_name == service:
+                for scope_span in resource_span.get("scopeSpans", []):
+                    for span in scope_span.get("spans", []):
+                        span_name = span.get("name")
+                        if span_name:
+                            operations.add(span_name)
+
+    operation_list = [
+        {"name": op, "spanKind": "unspecified"} for op in sorted(operations)
+    ]
+
+    # Jaeger UI expects {"operations": [...]} format
+    return JSONResponse({
+        "operations": operation_list
+    })
+
+
+@app.get("/api/v3/dependencies")
+async def get_dependencies():
+    """
+    Get service dependencies.
+    Jaeger UI endpoint: GET /api/v3/dependencies
+
+    Note: This is a simplified implementation that returns empty dependencies.
+    A full implementation would analyze parent-child span relationships.
+    """
+    return JSONResponse({
+        "result": {
+            "dependencies": []
+        }
+    })
+
+
+# @app.get("/api/config")
+# async def get_config():
+#     """
+#     Return Jaeger UI configuration.
+#     This endpoint is called by Jaeger UI on startup.
+#     """
+#     return JSONResponse({
+#         "data": {
+#             "archiveEnabled": False,
+#             "dependencies": {
+#                 "menuEnabled": False
+#             },
+#             "search": {
+#                 "maxLookback": {
+#                     "label": "7 Days",
+#                     "value": "604800s"
+#                 },
+#                 "maxLimit": 1500
+#             },
+#             "tracking": {
+#                 "gaID": None,
+#                 "trackErrors": False
+#             }
+#         }
+#     })
+
+
+# @app.get("/health")
+# async def health():
+#     """Health check endpoint"""
+#     return {"status": "healthy"}
+
+
+# @app.get("/api/status")
+# async def status():
+#     """API status and configuration endpoint"""
+#     return JSONResponse({
+#         "status": "ok",
+#         "connect_url": CONNECT_SERVER,
+#         "content_guid": CONNECT_CONTENT_GUID,
+#         "job_key": INSTRUMENTED_JOB_KEY,
+#         "jaeger_ui_available": os.path.exists("jaeger-ui"),
+#         "endpoints": [
+#             "/health",
+#             "/api/status",
+#             "/api/config",
+#             "/api/v3/traces",
+#             "/api/v3/traces/{trace_id}",
+#             "/api/v3/services",
+#             "/api/v3/operations",
+#             "/api/v3/dependencies"
+#         ]
+#     })
+
+# Mount Jaeger UI static assets
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
