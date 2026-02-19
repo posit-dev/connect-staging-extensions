@@ -217,11 +217,18 @@
             to load trace data from a specific content item and job.
         </p>
 
+        {% if is_running_in_connect and not connect_client_initialized %}
+        <div style="background: #fed7d7; border: 1px solid #fc8181; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
+            <p style="color: #c53030; font-size: 14px; line-height: 1.6; margin: 0;">
+                <strong>⚠️ Unexpected Error:</strong> The Connect client failed to initialize even though the application is running inside Connect. This may indicate a system issue. Please check the application logs for more details.
+            </p>
+        </div>
+        {% endif %}
+
         <div class="requirement-section">
             <h2>Required Environment Variables</h2>
             <p>
-                To view traces, you must set the following environment variables
-                that identify which content and job to load traces from:
+                The following environment variables are always required to identify which content and job to load traces from:
             </p>
             <div class="env-vars">
                 <div class="env-var">
@@ -239,11 +246,40 @@
             </div>
         </div>
 
+        {% if not is_running_in_connect %}
+        <div class="requirement-section">
+            <h2>Connect Server Configuration</h2>
+            <p>
+                Since this application is running <strong>outside of Posit Connect</strong>, you must also provide these environment variables:
+            </p>
+            <div class="env-vars">
+                <div class="env-var">
+                    <span class="env-var-name">CONNECT_SERVER</span>
+                    <span class="env-var-status {{ 'status-set' if has_connect_server else 'status-missing' }}">
+                        {{ 'Set' if has_connect_server else 'Missing' }}
+                    </span>
+                </div>
+                <div class="env-var">
+                    <span class="env-var-name">CONNECT_API_KEY</span>
+                    <span class="env-var-status {{ 'status-set' if has_connect_api_key else 'status-missing' }}">
+                        {{ 'Set' if has_connect_api_key else 'Missing' }}
+                    </span>
+                </div>
+            </div>
+            {% if not connect_client_initialized %}
+            <p style="margin-top: 16px; padding: 12px; background: #fed7d7; border-radius: 6px; color: #c53030; font-size: 14px;">
+                <strong>⚠️ Connection Error:</strong> The Connect client could not be initialized. Please ensure both CONNECT_SERVER and CONNECT_API_KEY are set correctly.
+            </p>
+            {% endif %}
+        </div>
+        {% endif %}
+
         <div class="instructions">
             <h3>How to Configure</h3>
+            {% if is_running_in_connect %}
             <ol>
                 <li>
-                    Navigate to your content item in Posit Connect
+                    Navigate to this content item in Posit Connect
                 </li>
                 <li>
                     Go to the <strong>Vars</strong> tab
@@ -251,7 +287,7 @@
                 <li>
                     Add the following environment variables:
                     <ul style="margin-top: 8px; list-style-type: disc;">
-                        <li><code>INSTRUMENTED_CONTENT_GUID</code> - The GUID of the content to trace</li>
+                        <li><code>INSTRUMENTED_CONTENT_GUID</code> - The GUID of the instrumented content to view traces from</li>
                         <li><code>INSTRUMENTED_JOB_KEY</code> - The job key to load traces from</li>
                     </ul>
                 </li>
@@ -259,6 +295,32 @@
                     Save your changes and reload this page
                 </li>
             </ol>
+            <p style="margin-top: 16px; color: #4a5568; font-size: 13px;">
+                <strong>Note:</strong> When running inside Connect, <code>CONNECT_SERVER</code>, <code>CONNECT_API_KEY</code>,
+                and <code>CONNECT_CONTENT_GUID</code> are provided automatically by the Connect server.
+            </p>
+            {% else %}
+            <ol>
+                <li>
+                    Set the following environment variables in your shell or deployment configuration:
+                    <ul style="margin-top: 8px; list-style-type: disc;">
+                        <li><code>INSTRUMENTED_CONTENT_GUID</code> - The GUID of the instrumented content to view traces from</li>
+                        <li><code>INSTRUMENTED_JOB_KEY</code> - The job key to load traces from</li>
+                        <li><code>CONNECT_SERVER</code> - URL of your Posit Connect server (e.g., https://connect.example.com)</li>
+                        <li><code>CONNECT_API_KEY</code> - Your Connect API key with access to the traces</li>
+                    </ul>
+                </li>
+                <li>
+                    Restart the application to load the new environment variables
+                </li>
+                <li>
+                    Reload this page
+                </li>
+            </ol>
+            <p style="margin-top: 16px; color: #4a5568; font-size: 13px;">
+                <strong>Note:</strong> When running outside Connect, all configuration must be provided via environment variables.
+            </p>
+            {% endif %}
         </div>
 
         <div class="footer">

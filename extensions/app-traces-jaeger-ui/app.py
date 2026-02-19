@@ -7,7 +7,6 @@ translating the API formats to make them compatible.
 
 import os
 import json
-import httpx
 import posixpath
 import logging
 from typing import Optional, List, Dict, Any
@@ -32,12 +31,18 @@ logger = logging.getLogger(__name__)
 # Jaeger UI index.html served as processable template to populate BASE_URL
 templates = Jinja2Templates(directory="templates")
 
+# Detect runtime environment
+POSIT_PRODUCT = os.getenv("POSIT_PRODUCT", "")
+IS_RUNNING_IN_CONNECT = POSIT_PRODUCT == "CONNECT"
+
 # Required configuration from environment variables to load traces
+# These are always required regardless of where the app is running
 INSTRUMENTED_CONTENT_GUID = os.getenv("INSTRUMENTED_CONTENT_GUID", "")
 INSTRUMENTED_JOB_KEY = os.getenv("INSTRUMENTED_JOB_KEY", "")
 
-# Connect injects CONNECT_SERVER and CONNECT_CONTENT_GUID
-# which are used later to determine proper api paths for Jaeger UI
+# Connect server configuration
+# When running inside Connect (POSIT_PRODUCT=CONNECT), these are provided automatically
+# When running outside Connect, these must be provided by the user
 CONNECT_SERVER = os.getenv("CONNECT_SERVER", "")
 CONNECT_API_KEY = os.getenv("CONNECT_API_KEY", "")
 CONNECT_CONTENT_GUID = os.getenv("CONNECT_CONTENT_GUID", "")
@@ -56,10 +61,33 @@ async def lifespan(app: FastAPI):
     """Manage application lifespan - startup and shutdown"""
     # Startup: Initialize the Connect client
     global connect_client
+    logger.info(f"Starting application (Running in Connect: {IS_RUNNING_IN_CONNECT})")
+
+    # Validate configuration based on runtime environment
+    if not IS_RUNNING_IN_CONNECT:
+        # When running outside Connect, we need these variables
+        if not CONNECT_SERVER or not CONNECT_API_KEY:
+            logger.warning(
+                "Running outside Connect but CONNECT_SERVER or CONNECT_API_KEY not set. "
+                "The application will start but won't be able to fetch traces. "
+                "Configuration instructions will be shown to the user."
+            )
+
+    # Connect client automatically picks up CONNECT_SERVER and CONNECT_API_KEY from environment
+    # Try to initialize, but allow app to start even if configuration is incomplete
     logger.info("Initializing Connect client")
-    connect_client = connect.Client()
+    try:
+        connect_client = connect.Client()
+        logger.info("Connect client initialized successfully")
+    except ValueError as e:
+        logger.warning(f"Failed to initialize Connect client: {e}")
+        logger.warning("Application will start but configuration is required to fetch traces")
+        connect_client = None
+
     logger.info("Application startup complete")
+
     yield
+
     # Shutdown: Clean up resources if needed
     logger.info("Shutting down application")
     connect_client = None
@@ -380,19 +408,40 @@ def transform_otlp_to_jaeger_format(otlp_traces: List[Dict[str, Any]]) -> List[D
 @app.get("/dependencies", response_class=HTMLResponse)
 @app.get("/monitor", response_class=HTMLResponse)
 async def jaeger_index(request: Request):
-    # Check if required environment variables are set
-    if not INSTRUMENTED_CONTENT_GUID or not INSTRUMENTED_JOB_KEY:
+    # Check if required environment variables are set or if Connect client is not initialized
+    missing_config = (not INSTRUMENTED_CONTENT_GUID or
+                     not INSTRUMENTED_JOB_KEY or
+                     connect_client is None)
+
+    if missing_config:
+        # Determine what configuration is missing
+        missing_connect_config = (not IS_RUNNING_IN_CONNECT and
+                                 (not CONNECT_SERVER or not CONNECT_API_KEY))
+
         return templates.TemplateResponse(
             request=request,
             name="instructions.html",
             context={
                 "has_content_guid": bool(INSTRUMENTED_CONTENT_GUID),
-                "has_job_key": bool(INSTRUMENTED_JOB_KEY)
+                "has_job_key": bool(INSTRUMENTED_JOB_KEY),
+                "is_running_in_connect": IS_RUNNING_IN_CONNECT,
+                "has_connect_server": bool(CONNECT_SERVER),
+                "has_connect_api_key": bool(CONNECT_API_KEY),
+                "missing_connect_config": missing_connect_config,
+                "connect_client_initialized": connect_client is not None
             }
         )
 
-    app_base_url = urljoin(CONNECT_SERVER, posixpath.join("content", CONNECT_CONTENT_GUID))
-    assets_base_url = urljoin(app_base_url, "static")
+    # Set base URLs based on where we're running
+    if IS_RUNNING_IN_CONNECT:
+        # Inside Connect, use the full path with content GUID
+        app_base_url = urljoin(CONNECT_SERVER, posixpath.join("content", CONNECT_CONTENT_GUID))
+        assets_base_url = urljoin(app_base_url, "static")
+    else:
+        # Outside Connect, use simple paths without proxy awareness
+        app_base_url = "/"
+        assets_base_url = "/static"
+
     return templates.TemplateResponse(
         request=request, name="index.html", context={"app_base_url": app_base_url, "assets_base_url": assets_base_url}
     )
