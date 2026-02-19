@@ -9,16 +9,25 @@ import os
 import json
 import httpx
 import posixpath
+import logging
 from typing import Optional, List, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 from urllib.parse import urljoin
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.templating import Jinja2Templates
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from posit import connect
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 # Jaeger UI index.html served as processable template to populate BASE_URL
 templates = Jinja2Templates(directory="templates")
@@ -33,10 +42,34 @@ CONNECT_SERVER = os.getenv("CONNECT_SERVER", "")
 CONNECT_API_KEY = os.getenv("CONNECT_API_KEY", "")
 CONNECT_CONTENT_GUID = os.getenv("CONNECT_CONTENT_GUID", "")
 
+# Constants
+MICROSECONDS_PER_SECOND = 1_000_000
+DEFAULT_TRACE_LIMIT = 1000
+MAX_TRACE_LIMIT = 5000
+
+# Global Connect client - initialized at startup
+connect_client = None
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Manage application lifespan - startup and shutdown"""
+    # Startup: Initialize the Connect client
+    global connect_client
+    logger.info("Initializing Connect client")
+    connect_client = connect.Client()
+    logger.info("Application startup complete")
+    yield
+    # Shutdown: Clean up resources if needed
+    logger.info("Shutting down application")
+    connect_client = None
+
+
 app = FastAPI(
     title="Connect Traces Viewer",
     description="Jaeger UI adapter for Posit Connect job traces",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
 
 # Enable CORS for development
@@ -47,6 +80,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 class SpanData(BaseModel):
     """Represents a span in OpenTelemetry format"""
@@ -60,29 +94,85 @@ class SpanData(BaseModel):
     status: Optional[Dict[str, Any]] = None
 
 
+class JaegerTrace(BaseModel):
+    """Jaeger trace format"""
+    traceID: str
+    spans: List[Dict[str, Any]]
+    processes: Dict[str, Any]
+    warnings: Optional[List[str]] = None
+
+
+class LegacyTracesResponse(BaseModel):
+    """Response model for legacy /api/traces endpoint"""
+    data: List[JaegerTrace]
+
+
+class ServiceResponse(BaseModel):
+    """Response model for /api/v3/services endpoint"""
+    services: List[str]
+
+
+class OperationInfo(BaseModel):
+    """Information about an operation"""
+    name: str
+    spanKind: str = "unspecified"
+
+
+class OperationsResponse(BaseModel):
+    """Response model for /api/v3/operations endpoint"""
+    operations: List[OperationInfo]
+
+
+class OTLPTracesResponse(BaseModel):
+    """Response model for /api/v3/traces endpoint"""
+    result: Dict[str, Any] = Field(description="Contains resourceSpans array")
+
+
+class TraceResponse(BaseModel):
+    """Response model for /api/v3/traces/{trace_id} endpoint"""
+    result: Dict[str, Any] = Field(description="Contains resourceSpans for a single trace")
+
+
+class DependenciesResponse(BaseModel):
+    """Response model for /api/v3/dependencies endpoint"""
+    result: Dict[str, List[Any]] = Field(default={"dependencies": []})
+
+
 def fetch_traces_from_connect(
     trace_id: Optional[str] = None,
-    limit: int = 1000,
+    limit: int = DEFAULT_TRACE_LIMIT,
     offset: int = 0,
     start_time_min: Optional[str] = None,
 ) -> tuple[List[Dict[str, Any]], int, int]:
     """
     Fetch traces from Connect's traces endpoint.
 
+    Args:
+        trace_id: Optional trace ID to filter by
+        limit: Maximum number of traces to return
+        offset: Number of traces to skip
+        start_time_min: Minimum start time in RFC3339 format
+
     Returns:
-        (traces, total_count, file_size)
+        tuple of (traces, total_count, file_size)
     """
     if not INSTRUMENTED_CONTENT_GUID or not INSTRUMENTED_JOB_KEY:
+        logger.error("Missing configuration: INSTRUMENTED_CONTENT_GUID or INSTRUMENTED_JOB_KEY")
         raise HTTPException(
             status_code=500,
-            detail="Missing configuration. Set CONNECT_API_KEY, INSTRUMENTED_CONTENT_GUID, and INSTRUMENTED_JOB_KEY environment variables."
+            detail="Missing configuration. Set INSTRUMENTED_CONTENT_GUID, and INSTRUMENTED_JOB_KEY environment variables."
         )
 
-    connectClient = connect.Client()
+    if not connect_client:
+        logger.error("Connect client not initialized")
+        raise HTTPException(
+            status_code=500,
+            detail="Connect client not initialized. Application may not have started correctly."
+        )
     path = f"v1/content/{INSTRUMENTED_CONTENT_GUID}/jobs/{INSTRUMENTED_JOB_KEY}/traces"
     params = {
-        "limit": limit,
-        "offset": offset,
+        "limit": min(limit, MAX_TRACE_LIMIT),
+        "offset": max(0, offset),
     }
 
     if trace_id:
@@ -93,11 +183,12 @@ def fetch_traces_from_connect(
         try:
             dt = datetime.fromisoformat(start_time_min.replace('Z', '+00:00'))
             params["since"] = str(int(dt.timestamp()))
-        except Exception:
-            pass  # If conversion fails, skip the filter
+        except (ValueError, AttributeError) as e:
+            logger.warning(f"Failed to convert start_time_min '{start_time_min}': {e}")
 
     try:
-        with connectClient.get(path, params=params, stream=True) as response:
+        logger.info(f"Fetching traces: trace_id={trace_id}, limit={params['limit']}, offset={params['offset']}")
+        with connect_client.get(path, params=params, stream=True) as response:
             response.raise_for_status()
 
             # Get headers
@@ -107,8 +198,12 @@ def fetch_traces_from_connect(
             # Read the response content
             # The posit.connect library uses requests under the hood
             text = response.text.strip()
+            logger.info(f"Fetched traces successfully: total_count={total_count}, file_size={file_size}")
 
+    except HTTPException:
+        raise
     except Exception as e:
+        logger.error(f"Failed to fetch traces from Connect: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=500,
             detail=f"Failed to fetch traces from Connect: {str(e)}"
@@ -126,9 +221,14 @@ def fetch_traces_from_connect(
                 except json.JSONDecodeError as e:
                     # Log but continue - partial lines can happen with streaming
                     # This is expected for incomplete lines at stream boundaries
+                    logger.debug(f"Skipped malformed JSON line {line_num}: {e}")
                     skipped_lines += 1
                     continue
 
+    if skipped_lines > 0:
+        logger.warning(f"Skipped {skipped_lines} malformed lines while parsing traces")
+
+    logger.info(f"Parsed {len(traces)} traces successfully")
     return traces, total_count, file_size
 
 
@@ -149,7 +249,8 @@ def transform_otlp_to_jaeger_format(otlp_traces: List[Dict[str, Any]]) -> List[D
     The Connect endpoint returns OTLP format, which is what Jaeger v3 uses,
     but we need to ensure proper field naming and structure.
     """
-    jaeger_traces = []
+    # Use a dictionary for O(1) trace lookup instead of O(n) list search
+    traces_by_id: Dict[str, Dict[str, Any]] = {}
 
     for otlp_trace in otlp_traces:
         # OTLP format is already compatible, but we need to ensure it's structured correctly
@@ -167,21 +268,16 @@ def transform_otlp_to_jaeger_format(otlp_traces: List[Dict[str, Any]]) -> List[D
                     # Group spans by trace ID
                     trace_id = span.get("traceId", "")
 
-                    # Find or create trace object
-                    trace_obj = None
-                    for t in jaeger_traces:
-                        if t.get("traceID") == trace_id:
-                            trace_obj = t
-                            break
-
-                    if not trace_obj:
-                        trace_obj = {
+                    # Get or create trace object using dictionary lookup
+                    if trace_id not in traces_by_id:
+                        traces_by_id[trace_id] = {
                             "traceID": trace_id,
                             "spans": [],
                             "processes": {},
                             "warnings": None
                         }
-                        jaeger_traces.append(trace_obj)
+
+                    trace_obj = traces_by_id[trace_id]
 
                     # Convert span to Jaeger format
                     process_id = f"p{len(trace_obj['processes'])}"
@@ -274,7 +370,8 @@ def transform_otlp_to_jaeger_format(otlp_traces: List[Dict[str, Any]]) -> List[D
 
                     trace_obj["spans"].append(jaeger_span)
 
-    return jaeger_traces
+    # Convert dictionary values back to list
+    return list(traces_by_id.values())
 
 # Jaeger UI is a SPA. Including all routes needed by Jaeger UI to serve the HTML template.
 @app.get("/", response_class=HTMLResponse)
@@ -300,13 +397,13 @@ async def jaeger_index(request: Request):
         request=request, name="index.html", context={"app_base_url": app_base_url, "assets_base_url": assets_base_url}
     )
 
-@app.get("/api/traces")
-async def search_traces_legacy(
-    service: Optional[str] = Query(None),
-    operation: Optional[str] = Query(None),
-    start: Optional[int] = Query(None, description="Start time in microseconds"),
-    end: Optional[int] = Query(None, description="End time in microseconds"),
-    limit: Optional[int] = Query(20),
+@app.get("/api/traces", response_model=None)
+def search_traces_legacy(
+    service: Optional[str] = Query(None, max_length=255),
+    operation: Optional[str] = Query(None, max_length=255),
+    start: Optional[int] = Query(None, ge=0, description="Start time in microseconds"),
+    end: Optional[int] = Query(None, ge=0, description="End time in microseconds"),
+    limit: Optional[int] = Query(20, ge=1, le=MAX_TRACE_LIMIT),
     lookback: Optional[str] = Query(None),
     minDuration: Optional[str] = Query(None),
     maxDuration: Optional[str] = Query(None),
@@ -314,18 +411,20 @@ async def search_traces_legacy(
     """
     Legacy Jaeger API endpoint: GET /api/traces
     This is called by Jaeger UI and expects Jaeger's internal format (not OTLP).
-
-    Note: We ignore time filters (start/end/lookback) since we're viewing
-    historical traces from a completed job, not a live tracing system.
     """
+    logger.info(f"Legacy trace search: service={service}, operation={operation}, start={start}, limit={limit}")
+
     # Convert start time from microseconds to RFC3339 format if provided
     start_time_min = None
     if start:
-        # Convert microseconds to seconds
-        start_seconds = start / 1_000_000
-        # Create datetime and format as RFC3339
-        start_dt = datetime.fromtimestamp(start_seconds)
-        start_time_min = start_dt.isoformat() + 'Z'
+        try:
+            # Convert microseconds to seconds
+            start_seconds = start / MICROSECONDS_PER_SECOND
+            # Create datetime with UTC timezone and format as RFC3339
+            start_dt = datetime.fromtimestamp(start_seconds, tz=timezone.utc)
+            start_time_min = start_dt.isoformat()
+        except (ValueError, OSError) as e:
+            logger.warning(f"Invalid start time {start}: {e}")
 
     # Fetch traces from Connect
     traces, total_count, file_size = fetch_traces_from_connect(
@@ -358,30 +457,39 @@ async def search_traces_legacy(
                 filtered_traces.append(trace)
 
         jaeger_traces = filtered_traces
+        logger.info(f"Filtered to {len(jaeger_traces)} traces matching criteria")
 
     # Legacy API returns {"data": [...]} with Jaeger format traces
-    return JSONResponse({
+    # Include pagination metadata in headers
+    response = JSONResponse({
         "data": jaeger_traces
     })
+    response.headers["X-Total-Count"] = str(total_count)
+    response.headers["X-Trace-File-Size"] = str(file_size)
+    return response
 
 
-@app.get("/api/v3/traces/{trace_id}")
-async def get_trace(trace_id: str):
+@app.get("/api/v3/traces/{trace_id}", response_model=TraceResponse)
+def get_trace(trace_id: str):
     """
     Get a specific trace by ID.
     Jaeger UI endpoint: GET /api/v3/traces/{trace_id}
     """
+    logger.info(f"Fetching trace by ID: {trace_id}")
     traces, _, _ = fetch_traces_from_connect(trace_id=trace_id, limit=0)
 
     if not traces:
+        logger.warning(f"Trace not found: {trace_id}")
         raise HTTPException(status_code=404, detail="Trace not found")
 
     # Transform to Jaeger format
     jaeger_traces = transform_otlp_to_jaeger_format(traces)
 
     if not jaeger_traces:
+        logger.warning(f"Trace transformation failed for: {trace_id}")
         raise HTTPException(status_code=404, detail="Trace not found")
 
+    logger.info(f"Successfully retrieved trace: {trace_id}")
     # Return the first matching trace
     return JSONResponse({
         "result": {
@@ -390,13 +498,13 @@ async def get_trace(trace_id: str):
     })
 
 
-@app.get("/api/v3/traces")
-async def search_traces(
-    service: Optional[str] = Query(None, description="Service name"),
-    operation: Optional[str] = Query(None, description="Operation name"),
+@app.get("/api/v3/traces", response_model=OTLPTracesResponse)
+def search_traces(
+    service: Optional[str] = Query(None, max_length=255, description="Service name"),
+    operation: Optional[str] = Query(None, max_length=255, description="Operation name"),
     start_time_min: Optional[str] = Query(None, description="Start time minimum (RFC3339)"),
     start_time_max: Optional[str] = Query(None, description="Start time maximum (RFC3339)"),
-    num_traces: Optional[int] = Query(100, description="Number of traces to return"),
+    num_traces: Optional[int] = Query(100, ge=1, le=MAX_TRACE_LIMIT, description="Number of traces to return"),
 ):
     """
     Search for traces.
@@ -404,6 +512,8 @@ async def search_traces(
 
     Returns: Object with data array containing traces
     """
+    logger.info(f"V3 trace search: service={service}, operation={operation}, num_traces={num_traces}")
+
     # Fetch traces from Connect
     traces, total_count, file_size = fetch_traces_from_connect(
         limit=num_traces,
@@ -452,24 +562,31 @@ async def search_traces(
         else:
             all_resource_spans.extend(resource_spans)
 
-    # Return in Jaeger API v3 format
-    return JSONResponse({
+    logger.info(f"Returning {len(all_resource_spans)} resource spans")
+
+    # Return in Jaeger API v3 format with pagination metadata
+    response = JSONResponse({
         "result": {
             "resourceSpans": all_resource_spans
         }
     })
+    response.headers["X-Total-Count"] = str(total_count)
+    response.headers["X-Trace-File-Size"] = str(file_size)
+    return response
 
 
-@app.get("/api/v3/services")
-async def get_services():
+@app.get("/api/v3/services", response_model=ServiceResponse)
+def get_services():
     """
     Get list of services.
     Jaeger UI endpoint: GET /api/v3/services
 
     Returns: Array of service names (not wrapped in result object)
     """
+    logger.info("Fetching services list")
+
     # Fetch a sample of traces to extract services
-    traces, _, _ = fetch_traces_from_connect(limit=1000)
+    traces, _, _ = fetch_traces_from_connect(limit=DEFAULT_TRACE_LIMIT)
 
     services = set()
     for trace in traces:
@@ -480,15 +597,18 @@ async def get_services():
                     if service_name:
                         services.add(service_name)
 
+    services_list = sorted(list(services))
+    logger.info(f"Found {len(services_list)} services")
+
     # Jaeger UI expects {"services": [...]} format
     return JSONResponse({
-        "services": sorted(list(services))
+        "services": services_list
     })
 
 
-@app.get("/api/v3/operations")
-async def get_operations(
-    service: str = Query(..., description="Service name")
+@app.get("/api/v3/operations", response_model=OperationsResponse)
+def get_operations(
+    service: str = Query(..., max_length=255, description="Service name")
 ):
     """
     Get list of operations for a service.
@@ -496,8 +616,10 @@ async def get_operations(
 
     Returns: Array of operation objects (not wrapped in result object)
     """
+    logger.info(f"Fetching operations for service: {service}")
+
     # Fetch traces and extract operations for the service
-    traces, _, _ = fetch_traces_from_connect(limit=1000)
+    traces, _, _ = fetch_traces_from_connect(limit=DEFAULT_TRACE_LIMIT)
 
     operations = set()
     for trace in traces:
@@ -520,14 +642,16 @@ async def get_operations(
         {"name": op, "spanKind": "unspecified"} for op in sorted(operations)
     ]
 
+    logger.info(f"Found {len(operation_list)} operations for service: {service}")
+
     # Jaeger UI expects {"operations": [...]} format
     return JSONResponse({
         "operations": operation_list
     })
 
 
-@app.get("/api/v3/dependencies")
-async def get_dependencies():
+@app.get("/api/v3/dependencies", response_model=DependenciesResponse)
+def get_dependencies():
     """
     Get service dependencies.
     Jaeger UI endpoint: GET /api/v3/dependencies
@@ -535,6 +659,7 @@ async def get_dependencies():
     Note: This is a simplified implementation that returns empty dependencies.
     A full implementation would analyze parent-child span relationships.
     """
+    logger.info("Fetching dependencies (returning empty)")
     return JSONResponse({
         "result": {
             "dependencies": []
