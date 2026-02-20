@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "locale": "en_US.UTF-8",
+  "metadata": {
+    "appmode": "python-fastapi",
+    "entrypoint": "app"
+  },
+  "python": {
+    "version": "3.12.11",
+    "package_manager": {
+      "name": "pip",
+      "version": "25.3",
+      "package_file": "requirements.txt"
+    }
+  },
+  "extension": {
+    "name": "app-traces-jaeger-viewer",
+    "title": "Application Traces Jaeger Viewer",
+    "description": "A dashboard powered by Jaeger UI to visualize application traces.",
+    "homepage": "https://github.com/posit-dev/connect-staging-extensions/tree/main/extensions/champion-dashboard",
+    "category": "example",
+    "tags": ["python"],
+    "minimumConnectVersion": "connect-preview",
+    "version": "1.0.0"
+  },
+  "files": {
+    "requirements.txt": {
+      "checksum": "20f11e9933d3453b484c076250e238ca"
+    },
+    "app.py": {
+      "checksum": "2e24d5c098329fc7970aa35a565d49c9"
+    },
+    "static/favicon-BxcVf0am.ico": {
+      "checksum": "51287d07abb67e25121f5e427091044d"
+    },
+    "static/index-CHCMBtu0.css": {
+      "checksum": "7cf8cf6691a0ec5c7f95e1514adee401"
+    },
+    "static/index-CLtoL0pe.js": {
+      "checksum": "ad6658709b66d98990662e2beda2c8a5"
+    },
+    "static/index-legacy-5ouPGdrB.js": {
+      "checksum": "7454db401ad2047a47a720fdfd373182"
+    },
+    "static/jaeger-logo-CNZsoUdk.svg": {
+      "checksum": "a7093b12e8a9970b9e82a97dd39d12cc"
+    },
+    "static/monitor-BYreg9RK.png": {
+      "checksum": "c9164c967f4881884753564e6b02c492"
+    },
+    "static/polyfills-legacy-qwTpZE7H.js": {
+      "checksum": "41eb80bfc3e3d0ac03beaaf74608616c"
+    },
+    "templates/index.html": {
+      "checksum": "31b2435b25bddc1381fcdf1e9d76e24f"
+    },
+    "templates/instructions.html": {
+      "checksum": "e753f06fb4b78e1107afea90655be9bb"
+    }
+  }
+}
