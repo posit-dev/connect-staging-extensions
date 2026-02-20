@@ -1,0 +1,14 @@
+{
+  "categories": [
+    {
+      "id": "extension",
+      "title": "extensions",
+      "description": "Useful tools that utilize the Posit Connect API to extend the functionality of Connect."
+    },
+    {
+      "id": "example",
+      "title": "examples",
+      "description": "Pre-built content to illustrate the types of content publishable on Posit Connect."
+    }
+  ]
+}

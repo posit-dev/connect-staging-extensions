@@ -44,7 +44,7 @@ jobs:
       - uses: actions/checkout@v4
 
       # We want to fail quickly if the linting fails, do that first
-      - uses: ./.github/actions/lint-extension
+      - uses: posit-dev/connect-gallery-action/lint-extension@main
         with:
           extension-name: ${{ env.EXTENSION_NAME }}
 
@@ -69,7 +69,7 @@ jobs:
             extensions/${{ env.EXTENSION_NAME }}/manifest.json
 
       # Package up the extension into a TAR using the package-extension action
-      - uses: ./.github/actions/package-extension
+      - uses: posit-dev/connect-gallery-action/package-extension@main
         with:
           extension-name: ${{ env.EXTENSION_NAME }}
           artifact-name: ${{ env.EXTENSION_NAME }}
@@ -91,7 +91,7 @@ jobs:
       # Checkout the repository so the rest of the actions can run with no issue
       - uses: actions/checkout@v4
 
-      - uses: ./.github/actions/release-extension
+      - uses: posit-dev/connect-gallery-action/release-extension@main
         with:
           extension-name: ${{ env.EXTENSION_NAME }}
 ```
