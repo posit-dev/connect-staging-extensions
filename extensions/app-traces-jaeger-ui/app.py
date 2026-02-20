@@ -436,7 +436,7 @@ async def jaeger_index(request: Request):
     if IS_RUNNING_IN_CONNECT:
         # Inside Connect, use the full path with content GUID
         app_base_url = urljoin(CONNECT_SERVER, posixpath.join("content", CONNECT_CONTENT_GUID))
-        assets_base_url = urljoin(app_base_url, "static")
+        assets_base_url = urljoin(CONNECT_SERVER, posixpath.join("content", CONNECT_CONTENT_GUID, "static"))
     else:
         # Outside Connect, use simple paths without proxy awareness
         app_base_url = "/"
