@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuration Required - Connect Traces Viewer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 700px;
+            width: 100%;
+            padding: 40px;
+        }
+
+        .icon-container {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+        }
+
+        h1 {
+            color: #1a202c;
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+
+        .subtitle {
+            color: #718096;
+            font-size: 16px;
+            text-align: center;
+            margin-bottom: 32px;
+            line-height: 1.6;
+        }
+
+        .requirement-section {
+            background: #f7fafc;
+            border-left: 4px solid #667eea;
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .requirement-section h2 {
+            color: #2d3748;
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+
+        .requirement-section p {
+            color: #4a5568;
+            font-size: 14px;
+            line-height: 1.6;
+            margin-bottom: 16px;
+        }
+
+        .env-vars {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 16px;
+            font-family: "Monaco", "Menlo", "Ubuntu Mono", "Consolas", monospace;
+        }
+
+        .env-var {
+            display: flex;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #f7fafc;
+        }
+
+        .env-var:last-child {
+            border-bottom: none;
+        }
+
+        .env-var-name {
+            color: #667eea;
+            font-weight: 600;
+            font-size: 14px;
+            min-width: 280px;
+        }
+
+        .env-var-status {
+            margin-left: auto;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-missing {
+            background: #fed7d7;
+            color: #c53030;
+        }
+
+        .status-set {
+            background: #c6f6d5;
+            color: #22543d;
+        }
+
+        .instructions {
+            background: #fffaf0;
+            border: 1px solid #fbd38d;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 24px;
+        }
+
+        .instructions h3 {
+            color: #744210;
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+
+        .instructions ol {
+            color: #744210;
+            font-size: 14px;
+            line-height: 1.8;
+            padding-left: 20px;
+        }
+
+        .instructions li {
+            margin-bottom: 8px;
+        }
+
+        .instructions code {
+            background: #feebc8;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: "Monaco", "Menlo", "Ubuntu Mono", "Consolas", monospace;
+            font-size: 13px;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 32px;
+            padding-top: 24px;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .footer a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 640px) {
+            .container {
+                padding: 24px;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+            .env-var {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .env-var-name {
+                margin-bottom: 8px;
+            }
+
+            .env-var-status {
+                margin-left: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="icon-container">
+            <div class="icon">
+                <span style="color: white;">⚙️</span>
+            </div>
+        </div>
+
+        <h1>Configuration Required</h1>
+        <p class="subtitle">
+            The Connect Traces Viewer needs to be configured with environment variables
+            to load trace data from a specific content item and job.
+        </p>
+
+        {% if is_running_in_connect and not connect_client_initialized %}
+        <div style="background: #fed7d7; border: 1px solid #fc8181; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
+            <p style="color: #c53030; font-size: 14px; line-height: 1.6; margin: 0;">
+                <strong>⚠️ Unexpected Error:</strong> The Connect client failed to initialize even though the application is running inside Connect. This may indicate a system issue. Please check the application logs for more details.
+            </p>
+        </div>
+        {% endif %}
+
+        <div class="requirement-section">
+            <h2>Required Environment Variables</h2>
+            <p>
+                The following environment variables are always required to identify which content and job to load traces from:
+            </p>
+            <div class="env-vars">
+                <div class="env-var">
+                    <span class="env-var-name">INSTRUMENTED_CONTENT_GUID</span>
+                    <span class="env-var-status {{ 'status-set' if has_content_guid else 'status-missing' }}">
+                        {{ 'Set' if has_content_guid else 'Missing' }}
+                    </span>
+                </div>
+                <div class="env-var">
+                    <span class="env-var-name">INSTRUMENTED_JOB_KEY</span>
+                    <span class="env-var-status {{ 'status-set' if has_job_key else 'status-missing' }}">
+                        {{ 'Set' if has_job_key else 'Missing' }}
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        {% if not is_running_in_connect %}
+        <div class="requirement-section">
+            <h2>Connect Server Configuration</h2>
+            <p>
+                Since this application is running <strong>outside of Posit Connect</strong>, you must also provide these environment variables:
+            </p>
+            <div class="env-vars">
+                <div class="env-var">
+                    <span class="env-var-name">CONNECT_SERVER</span>
+                    <span class="env-var-status {{ 'status-set' if has_connect_server else 'status-missing' }}">
+                        {{ 'Set' if has_connect_server else 'Missing' }}
+                    </span>
+                </div>
+                <div class="env-var">
+                    <span class="env-var-name">CONNECT_API_KEY</span>
+                    <span class="env-var-status {{ 'status-set' if has_connect_api_key else 'status-missing' }}">
+                        {{ 'Set' if has_connect_api_key else 'Missing' }}
+                    </span>
+                </div>
+            </div>
+            {% if not connect_client_initialized %}
+            <p style="margin-top: 16px; padding: 12px; background: #fed7d7; border-radius: 6px; color: #c53030; font-size: 14px;">
+                <strong>⚠️ Connection Error:</strong> The Connect client could not be initialized. Please ensure both CONNECT_SERVER and CONNECT_API_KEY are set correctly.
+            </p>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <div class="instructions">
+            <h3>How to Configure</h3>
+            {% if is_running_in_connect %}
+            <ol>
+                <li>
+                    Navigate to this content item in Posit Connect
+                </li>
+                <li>
+                    Go to the <strong>Vars</strong> tab
+                </li>
+                <li>
+                    Add the following environment variables:
+                    <ul style="margin-top: 8px; list-style-type: disc;">
+                        <li><code>INSTRUMENTED_CONTENT_GUID</code> - The GUID of the instrumented content to view traces from</li>
+                        <li><code>INSTRUMENTED_JOB_KEY</code> - The job key to load traces from</li>
+                    </ul>
+                </li>
+                <li>
+                    Save your changes and reload this page
+                </li>
+            </ol>
+            <p style="margin-top: 16px; color: #4a5568; font-size: 13px;">
+                <strong>Note:</strong> When running inside Connect, <code>CONNECT_SERVER</code>, <code>CONNECT_API_KEY</code>,
+                and <code>CONNECT_CONTENT_GUID</code> are provided automatically by the Connect server.
+            </p>
+            {% else %}
+            <ol>
+                <li>
+                    Set the following environment variables in your shell or deployment configuration:
+                    <ul style="margin-top: 8px; list-style-type: disc;">
+                        <li><code>INSTRUMENTED_CONTENT_GUID</code> - The GUID of the instrumented content to view traces from</li>
+                        <li><code>INSTRUMENTED_JOB_KEY</code> - The job key to load traces from</li>
+                        <li><code>CONNECT_SERVER</code> - URL of your Posit Connect server (e.g., https://connect.example.com)</li>
+                        <li><code>CONNECT_API_KEY</code> - Your Connect API key with access to the traces</li>
+                    </ul>
+                </li>
+                <li>
+                    Restart the application to load the new environment variables
+                </li>
+                <li>
+                    Reload this page
+                </li>
+            </ol>
+            <p style="margin-top: 16px; color: #4a5568; font-size: 13px;">
+                <strong>Note:</strong> When running outside Connect, all configuration must be provided via environment variables.
+            </p>
+            {% endif %}
+        </div>
+
+        <div class="footer">
+            <p style="color: #718096; font-size: 14px; margin-bottom: 8px;">
+                Posit Connect Traces Viewer
+            </p>
+        </div>
+    </div>
+</body>
+</html>
