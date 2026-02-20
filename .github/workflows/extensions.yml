@@ -30,6 +30,7 @@ jobs:
           # e.g. `extension-name: extensions/extension-name/**`
           filters: |
             champion-dashboard: extensions/champion-dashboard/**
+            app-traces-jaeger-ui: extensions/app-traces-jaeger-ui/**
 
   # Runs for each extension that has changed from `simple-extension-changes`
   # Lints and packages in preparation for tests and and release.
