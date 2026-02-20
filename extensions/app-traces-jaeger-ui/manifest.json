@@ -14,7 +14,7 @@
     }
   },
   "extension": {
-    "name": "app-traces-jaeger-viewer",
+    "name": "app-traces-jaeger-ui",
     "title": "Application Traces Jaeger Viewer",
     "description": "A dashboard powered by Jaeger UI to visualize application traces.",
     "homepage": "https://github.com/posit-dev/connect-staging-extensions/tree/main/extensions/champion-dashboard",
