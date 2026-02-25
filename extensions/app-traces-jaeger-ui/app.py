@@ -769,7 +769,7 @@ def get_applications():
         # Use Connect's search endpoint to find all Shiny applications
         path = "v1/search/content"
         params = {
-            "q": "type:shiny",
+            "q": "type:shiny owner:@me",
             "published": True,
             "sort": "last_deployed_time",
             "order": "desc",
