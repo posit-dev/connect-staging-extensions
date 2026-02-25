@@ -34,12 +34,18 @@
       "description": "A dashboard powered by Jaeger UI to visualize application traces.",
       "homepage": "https://github.com/posit-dev/connect-staging-extensions/tree/main/extensions/champion-dashboard",
       "latestVersion": {
-        "version": "1.0.3",
-        "released": "2026-02-20T21:20:11Z",
-        "url": "https://github.com/posit-dev/connect-staging-extensions/releases/download/app-traces-jaeger-ui%40v1.0.3/app-traces-jaeger-ui.tar.gz",
+        "version": "1.0.4",
+        "released": "2026-02-25T12:23:27Z",
+        "url": "https://github.com/posit-dev/connect-staging-extensions/releases/download/app-traces-jaeger-ui%40v1.0.4/app-traces-jaeger-ui.tar.gz",
         "minimumConnectVersion": "connect-preview"
       },
       "versions": [
+        {
+          "version": "1.0.4",
+          "released": "2026-02-25T12:23:27Z",
+          "url": "https://github.com/posit-dev/connect-staging-extensions/releases/download/app-traces-jaeger-ui%40v1.0.4/app-traces-jaeger-ui.tar.gz",
+          "minimumConnectVersion": "connect-preview"
+        },
         {
           "version": "1.0.3",
           "released": "2026-02-20T21:20:11Z",
