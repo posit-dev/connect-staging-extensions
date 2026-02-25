@@ -35,11 +35,6 @@ templates = Jinja2Templates(directory="templates")
 POSIT_PRODUCT = os.getenv("POSIT_PRODUCT", "")
 IS_RUNNING_IN_CONNECT = POSIT_PRODUCT == "CONNECT"
 
-# Required configuration from environment variables to load traces
-# These are always required regardless of where the app is running
-INSTRUMENTED_CONTENT_GUID = os.getenv("INSTRUMENTED_CONTENT_GUID", "")
-INSTRUMENTED_JOB_KEY = os.getenv("INSTRUMENTED_JOB_KEY", "")
-
 # Connect server configuration
 # When running inside Connect (POSIT_PRODUCT=CONNECT), these are provided automatically
 # When running outside Connect, these must be provided by the user
@@ -166,7 +161,24 @@ class DependenciesResponse(BaseModel):
     result: Dict[str, List[Any]] = Field(default={"dependencies": []})
 
 
+class Application(BaseModel):
+    """Application model for /api/applications endpoint"""
+    guid: str
+    name: str
+    title: str
+
+
+class Job(BaseModel):
+    """Job model for /api/applications/{guid}/jobs endpoint"""
+    id: str
+    key: str
+    start_time: Optional[str] = None
+    end_time: Optional[str] = None
+
+
 def fetch_traces_from_connect(
+    application: str,
+    job_key: str,
     trace_id: Optional[str] = None,
     limit: int = DEFAULT_TRACE_LIMIT,
     offset: int = 0,
@@ -176,6 +188,8 @@ def fetch_traces_from_connect(
     Fetch traces from Connect's traces endpoint.
 
     Args:
+        application: Application GUID
+        job_key: Job key
         trace_id: Optional trace ID to filter by
         limit: Maximum number of traces to return
         offset: Number of traces to skip
@@ -184,20 +198,13 @@ def fetch_traces_from_connect(
     Returns:
         tuple of (traces, total_count, file_size)
     """
-    if not INSTRUMENTED_CONTENT_GUID or not INSTRUMENTED_JOB_KEY:
-        logger.error("Missing configuration: INSTRUMENTED_CONTENT_GUID or INSTRUMENTED_JOB_KEY")
-        raise HTTPException(
-            status_code=500,
-            detail="Missing configuration. Set INSTRUMENTED_CONTENT_GUID, and INSTRUMENTED_JOB_KEY environment variables."
-        )
-
     if not connect_client:
         logger.error("Connect client not initialized")
         raise HTTPException(
             status_code=500,
             detail="Connect client not initialized. Application may not have started correctly."
         )
-    path = f"v1/content/{INSTRUMENTED_CONTENT_GUID}/jobs/{INSTRUMENTED_JOB_KEY}/traces"
+    path = f"v1/content/{application}/jobs/{job_key}/traces"
     params = {
         "limit": min(limit, MAX_TRACE_LIMIT),
         "offset": max(0, offset),
@@ -408,10 +415,8 @@ def transform_otlp_to_jaeger_format(otlp_traces: List[Dict[str, Any]]) -> List[D
 @app.get("/dependencies", response_class=HTMLResponse)
 @app.get("/monitor", response_class=HTMLResponse)
 async def jaeger_index(request: Request):
-    # Check if required environment variables are set or if Connect client is not initialized
-    missing_config = (not INSTRUMENTED_CONTENT_GUID or
-                     not INSTRUMENTED_JOB_KEY or
-                     connect_client is None)
+    # Check if Connect client is not initialized
+    missing_config = connect_client is None
 
     if missing_config:
         # Determine what configuration is missing
@@ -422,8 +427,6 @@ async def jaeger_index(request: Request):
             request=request,
             name="instructions.html",
             context={
-                "has_content_guid": bool(INSTRUMENTED_CONTENT_GUID),
-                "has_job_key": bool(INSTRUMENTED_JOB_KEY),
                 "is_running_in_connect": IS_RUNNING_IN_CONNECT,
                 "has_connect_server": bool(CONNECT_SERVER),
                 "has_connect_api_key": bool(CONNECT_API_KEY),
@@ -448,6 +451,8 @@ async def jaeger_index(request: Request):
 
 @app.get("/api/traces", response_model=None)
 def search_traces_legacy(
+    application: str = Query(..., description="Application GUID"),
+    jobKey: str = Query(..., description="Job key"),
     service: Optional[str] = Query(None, max_length=255),
     operation: Optional[str] = Query(None, max_length=255),
     start: Optional[int] = Query(None, ge=0, description="Start time in microseconds"),
@@ -461,7 +466,7 @@ def search_traces_legacy(
     Legacy Jaeger API endpoint: GET /api/traces
     This is called by Jaeger UI and expects Jaeger's internal format (not OTLP).
     """
-    logger.info(f"Legacy trace search: service={service}, operation={operation}, start={start}, limit={limit}")
+    logger.info(f"Legacy trace search: service={service}, operation={operation}, start={start}, limit={limit}, application={application}, jobKey={jobKey}")
 
     # Convert start time from microseconds to RFC3339 format if provided
     start_time_min = None
@@ -477,6 +482,8 @@ def search_traces_legacy(
 
     # Fetch traces from Connect
     traces, total_count, file_size = fetch_traces_from_connect(
+        application=application,
+        job_key=jobKey,
         limit=limit,
         start_time_min=start_time_min
     )
@@ -519,13 +526,22 @@ def search_traces_legacy(
 
 
 @app.get("/api/v3/traces/{trace_id}", response_model=TraceResponse)
-def get_trace(trace_id: str):
+def get_trace(
+    trace_id: str,
+    application: str = Query(..., description="Application GUID"),
+    jobKey: str = Query(..., description="Job key")
+):
     """
     Get a specific trace by ID.
     Jaeger UI endpoint: GET /api/v3/traces/{trace_id}
     """
     logger.info(f"Fetching trace by ID: {trace_id}")
-    traces, _, _ = fetch_traces_from_connect(trace_id=trace_id, limit=0)
+    traces, _, _ = fetch_traces_from_connect(
+        application=application,
+        job_key=jobKey,
+        trace_id=trace_id,
+        limit=0
+    )
 
     if not traces:
         logger.warning(f"Trace not found: {trace_id}")
@@ -549,6 +565,8 @@ def get_trace(trace_id: str):
 
 @app.get("/api/v3/traces", response_model=OTLPTracesResponse)
 def search_traces(
+    application: str = Query(..., description="Application GUID"),
+    jobKey: str = Query(..., description="Job key"),
     service: Optional[str] = Query(None, max_length=255, description="Service name"),
     operation: Optional[str] = Query(None, max_length=255, description="Operation name"),
     start_time_min: Optional[str] = Query(None, description="Start time minimum (RFC3339)"),
@@ -565,6 +583,8 @@ def search_traces(
 
     # Fetch traces from Connect
     traces, total_count, file_size = fetch_traces_from_connect(
+        application=application,
+        job_key=jobKey,
         limit=num_traces,
         start_time_min=start_time_min
     )
@@ -625,7 +645,10 @@ def search_traces(
 
 
 @app.get("/api/v3/services", response_model=ServiceResponse)
-def get_services():
+def get_services(
+    application: str = Query(..., description="Application GUID"),
+    jobKey: str = Query(..., description="Job key")
+):
     """
     Get list of services.
     Jaeger UI endpoint: GET /api/v3/services
@@ -635,7 +658,11 @@ def get_services():
     logger.info("Fetching services list")
 
     # Fetch a sample of traces to extract services
-    traces, _, _ = fetch_traces_from_connect(limit=DEFAULT_TRACE_LIMIT)
+    traces, _, _ = fetch_traces_from_connect(
+        application=application,
+        job_key=jobKey,
+        limit=DEFAULT_TRACE_LIMIT
+    )
 
     services = set()
     for trace in traces:
@@ -657,7 +684,9 @@ def get_services():
 
 @app.get("/api/v3/operations", response_model=OperationsResponse)
 def get_operations(
-    service: str = Query(..., max_length=255, description="Service name")
+    service: str = Query(..., max_length=255, description="Service name"),
+    application: str = Query(..., description="Application GUID"),
+    jobKey: str = Query(..., description="Job key")
 ):
     """
     Get list of operations for a service.
@@ -668,7 +697,11 @@ def get_operations(
     logger.info(f"Fetching operations for service: {service}")
 
     # Fetch traces and extract operations for the service
-    traces, _, _ = fetch_traces_from_connect(limit=DEFAULT_TRACE_LIMIT)
+    traces, _, _ = fetch_traces_from_connect(
+        application=application,
+        job_key=jobKey,
+        limit=DEFAULT_TRACE_LIMIT
+    )
 
     operations = set()
     for trace in traces:
@@ -716,59 +749,110 @@ def get_dependencies():
     })
 
 
-# @app.get("/api/config")
-# async def get_config():
-#     """
-#     Return Jaeger UI configuration.
-#     This endpoint is called by Jaeger UI on startup.
-#     """
-#     return JSONResponse({
-#         "data": {
-#             "archiveEnabled": False,
-#             "dependencies": {
-#                 "menuEnabled": False
-#             },
-#             "search": {
-#                 "maxLookback": {
-#                     "label": "7 Days",
-#                     "value": "604800s"
-#                 },
-#                 "maxLimit": 1500
-#             },
-#             "tracking": {
-#                 "gaID": None,
-#                 "trackErrors": False
-#             }
-#         }
-#     })
+@app.get("/api/applications", response_model=List[Application])
+def get_applications():
+    """
+    Get list of all Shiny applications from Connect.
+
+    Returns: Array of applications with guid, name, and title
+    """
+    logger.info("Fetching Shiny applications from Connect")
+
+    if not connect_client:
+        logger.error("Connect client not initialized")
+        raise HTTPException(
+            status_code=500,
+            detail="Connect client not initialized. Application may not have started correctly."
+        )
+
+    try:
+        # Use Connect's search endpoint to find all Shiny applications
+        path = "v1/search/content"
+        params = {
+            "q": "type:shiny",
+            "published": True,
+            "sort": "last_deployed_time",
+            "order": "desc",
+            "page_number": 1,
+            "page_size": 100
+        }
+
+        response = connect_client.get(path, params=params)
+        response.raise_for_status()
+
+        # Parse the response
+        data = response.json()
+        results = data.get("results", [])
+
+        logger.info(f"Found app {len(results)} results")
+
+        # Transform to our application format
+        applications = [
+            {
+                "guid": app.get("guid"),
+                "name": app.get("name"),
+                "title": app.get("title")
+            }
+            for app in results
+        ]
+
+        logger.info(f"Found {len(applications)} applications")
+        return JSONResponse(applications)
+
+    except Exception as e:
+        logger.error(f"Failed to fetch applications from Connect: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to fetch applications from Connect: {str(e)}"
+        )
 
 
-# @app.get("/health")
-# async def health():
-#     """Health check endpoint"""
-#     return {"status": "healthy"}
+@app.get("/api/applications/{guid}/jobs", response_model=List[Job])
+def get_application_jobs(guid: str):
+    """
+    Get list of jobs for a specific application.
 
+    Args:
+        guid: Application GUID
 
-# @app.get("/api/status")
-# async def status():
-#     """API status and configuration endpoint"""
-#     return JSONResponse({
-#         "status": "ok",
-#         "connect_url": CONNECT_SERVER,
-#         "content_guid": CONNECT_CONTENT_GUID,
-#         "job_key": INSTRUMENTED_JOB_KEY,
-#         "jaeger_ui_available": os.path.exists("jaeger-ui"),
-#         "endpoints": [
-#             "/health",
-#             "/api/status",
-#             "/api/config",
-#             "/api/v3/traces",
-#             "/api/v3/traces/{trace_id}",
-#             "/api/v3/services",
-#             "/api/v3/operations",
-#             "/api/v3/dependencies"
-#         ]
-#     })
+    Returns: Array of jobs with id, key, start_time, and end_time
+    """
+    logger.info(f"Fetching jobs for application: {guid}")
+
+    if not connect_client:
+        logger.error("Connect client not initialized")
+        raise HTTPException(
+            status_code=500,
+            detail="Connect client not initialized. Application may not have started correctly."
+        )
+
+    try:
+        # Get the content item to access jobs
+        content = connect_client.content.get(guid)
+
+        # Fetch jobs for this content
+        jobs_list = []
+        for job in content.jobs:
+            # Convert the job Resource object to a dictionary
+            # The posit SDK returns _Resource objects that can be accessed like dictionaries
+            job_dict = dict(job)
+            job_data = {
+                "id": job_dict.get("id", ""),
+                "key": job_dict.get("key", ""),
+                "start_time": job_dict.get("start_time"),
+                "end_time": job_dict.get("end_time")
+            }
+            jobs_list.append(job_data)
+
+        logger.info(f"Found {len(jobs_list)} jobs for application: {guid}")
+        return JSONResponse(jobs_list)
+
+    except Exception as e:
+        logger.error(f"Failed to fetch jobs for application {guid}: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to fetch jobs for application: {str(e)}"
+        )
 
 # Mount Jaeger UI static assets
 app.mount("/static", StaticFiles(directory="static"), name="static")

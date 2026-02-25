@@ -213,8 +213,7 @@
 
         <h1>Configuration Required</h1>
         <p class="subtitle">
-            The Connect Traces Viewer needs to be configured with environment variables
-            to load trace data from a specific content item and job.
+            The Connect Traces Viewer needs to be configured to connect to your Posit Connect server.
         </p>
 
         {% if is_running_in_connect and not connect_client_initialized %}
@@ -224,27 +223,6 @@
             </p>
         </div>
         {% endif %}
-
-        <div class="requirement-section">
-            <h2>Required Environment Variables</h2>
-            <p>
-                The following environment variables are always required to identify which content and job to load traces from:
-            </p>
-            <div class="env-vars">
-                <div class="env-var">
-                    <span class="env-var-name">INSTRUMENTED_CONTENT_GUID</span>
-                    <span class="env-var-status {{ 'status-set' if has_content_guid else 'status-missing' }}">
-                        {{ 'Set' if has_content_guid else 'Missing' }}
-                    </span>
-                </div>
-                <div class="env-var">
-                    <span class="env-var-name">INSTRUMENTED_JOB_KEY</span>
-                    <span class="env-var-status {{ 'status-set' if has_job_key else 'status-missing' }}">
-                        {{ 'Set' if has_job_key else 'Missing' }}
-                    </span>
-                </div>
-            </div>
-        </div>
 
         {% if not is_running_in_connect %}
         <div class="requirement-section">
@@ -275,37 +253,21 @@
         {% endif %}
 
         <div class="instructions">
-            <h3>How to Configure</h3>
+            <h3>How to Use</h3>
             {% if is_running_in_connect %}
-            <ol>
-                <li>
-                    Navigate to this content item in Posit Connect
-                </li>
-                <li>
-                    Go to the <strong>Vars</strong> tab
-                </li>
-                <li>
-                    Add the following environment variables:
-                    <ul style="margin-top: 8px; list-style-type: disc;">
-                        <li><code>INSTRUMENTED_CONTENT_GUID</code> - The GUID of the instrumented content to view traces from</li>
-                        <li><code>INSTRUMENTED_JOB_KEY</code> - The job key to load traces from</li>
-                    </ul>
-                </li>
-                <li>
-                    Save your changes and reload this page
-                </li>
-            </ol>
-            <p style="margin-top: 16px; color: #4a5568; font-size: 13px;">
-                <strong>Note:</strong> When running inside Connect, <code>CONNECT_SERVER</code>, <code>CONNECT_API_KEY</code>,
+            <p style="color: #4a5568; font-size: 14px; line-height: 1.6;">
+                When running inside Connect, <code>CONNECT_SERVER</code>, <code>CONNECT_API_KEY</code>,
                 and <code>CONNECT_CONTENT_GUID</code> are provided automatically by the Connect server.
+            </p>
+            <p style="margin-top: 16px; color: #4a5568; font-size: 14px; line-height: 1.6;">
+                The application is ready to use. You can select applications and jobs through the user interface
+                to view their traces.
             </p>
             {% else %}
             <ol>
                 <li>
                     Set the following environment variables in your shell or deployment configuration:
                     <ul style="margin-top: 8px; list-style-type: disc;">
-                        <li><code>INSTRUMENTED_CONTENT_GUID</code> - The GUID of the instrumented content to view traces from</li>
-                        <li><code>INSTRUMENTED_JOB_KEY</code> - The job key to load traces from</li>
                         <li><code>CONNECT_SERVER</code> - URL of your Posit Connect server (e.g., https://connect.example.com)</li>
                         <li><code>CONNECT_API_KEY</code> - Your Connect API key with access to the traces</li>
                     </ul>
@@ -318,7 +280,8 @@
                 </li>
             </ol>
             <p style="margin-top: 16px; color: #4a5568; font-size: 13px;">
-                <strong>Note:</strong> When running outside Connect, all configuration must be provided via environment variables.
+                <strong>Note:</strong> After configuring the connection, you can select applications and jobs
+                through the user interface to view their traces.
             </p>
             {% endif %}
         </div>
