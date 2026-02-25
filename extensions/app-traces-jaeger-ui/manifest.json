@@ -21,7 +21,7 @@
     "category": "example",
     "tags": ["python"],
     "minimumConnectVersion": "connect-preview",
-    "version": "1.0.3"
+    "version": "1.0.4"
   },
   "files": {
     "requirements.txt": {
