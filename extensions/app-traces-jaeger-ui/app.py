@@ -437,9 +437,42 @@ async def jaeger_index(request: Request):
 
     # Set base URLs based on where we're running
     if IS_RUNNING_IN_CONNECT:
-        # Inside Connect, use the full path with content GUID
-        app_base_url = urljoin(CONNECT_SERVER, posixpath.join("content", CONNECT_CONTENT_GUID))
-        assets_base_url = urljoin(CONNECT_SERVER, posixpath.join("content", CONNECT_CONTENT_GUID, "static"))
+        # Inside Connect, derive the app_base_url from the request URL
+        # We can't just infer with /content/GUID because vanities are also in play here
+        # Strip known route paths (/search, /trace/*, /dependencies, /monitor) if present
+        request_path = request.url.path
+
+        # Remove trailing slash for consistency
+        if request_path.endswith('/') and len(request_path) > 1:
+            request_path = request_path.rstrip('/')
+
+        # Define the route paths that should be stripped
+        route_paths = ['/search', '/dependencies', '/monitor']
+
+        # Determine the base path by stripping known routes
+        base_path = request_path
+
+        # Check if path ends with any of the simple routes
+        for route_path in route_paths:
+            if request_path.endswith(route_path):
+                base_path = request_path[:-len(route_path)]
+                break
+        else:
+            # Check if path contains /trace/
+            if '/trace/' in request_path:
+                # Find the position of /trace/ and strip everything from there
+                trace_index = request_path.find('/trace/')
+                base_path = request_path[:trace_index]
+
+        # Ensure base_path doesn't end with a slash (unless it's just "/")
+        if base_path.endswith('/') and len(base_path) > 1:
+            base_path = base_path.rstrip('/')
+
+        # Build the app_base_url from scheme, netloc, and base_path (no query params)
+        app_base_url = f"{request.url.scheme}://{request.url.netloc}{base_path}"
+
+        # Assets are always at /static relative to the app base
+        assets_base_url = f"{app_base_url}/static"
     else:
         # Outside Connect, use simple paths without proxy awareness
         app_base_url = "/"
@@ -457,7 +490,7 @@ def search_traces_legacy(
     operation: Optional[str] = Query(None, max_length=255),
     start: Optional[int] = Query(None, ge=0, description="Start time in microseconds"),
     end: Optional[int] = Query(None, ge=0, description="End time in microseconds"),
-    limit: Optional[int] = Query(20, ge=1, le=MAX_TRACE_LIMIT),
+    limit: Optional[int] = Query(100, ge=1, le=MAX_TRACE_LIMIT),
     lookback: Optional[str] = Query(None),
     minDuration: Optional[str] = Query(None),
     maxDuration: Optional[str] = Query(None),
@@ -481,15 +514,22 @@ def search_traces_legacy(
             logger.warning(f"Invalid start time {start}: {e}")
 
     # Fetch traces from Connect
+    # Note: We need to fetch many more spans than the requested trace limit
+    # because Connect's limit is on spans, not traces. To ensure we get complete
+    # traces, we fetch MAX_TRACE_LIMIT spans and then limit the number of traces after transformation.
     traces, total_count, file_size = fetch_traces_from_connect(
         application=application,
         job_key=jobKey,
-        limit=limit,
+        limit=MAX_TRACE_LIMIT,
         start_time_min=start_time_min
     )
 
     # Transform to Jaeger's internal format (with spans array)
     jaeger_traces = transform_otlp_to_jaeger_format(traces)
+
+    # Limit the number of traces (not spans) returned to the user
+    if len(jaeger_traces) > limit:
+        jaeger_traces = jaeger_traces[:limit]
 
     # Filter by service/operation if specified
     if service or operation:
@@ -525,6 +565,43 @@ def search_traces_legacy(
     return response
 
 
+@app.get("/api/traces/{trace_id}", response_model=None)
+def get_trace_legacy(
+    trace_id: str,
+    application: str = Query(..., description="Application GUID"),
+    jobKey: str = Query(..., description="Job key")
+):
+    """
+    Get a specific trace by ID (legacy format).
+    Legacy Jaeger API endpoint: GET /api/traces/{trace_id}
+    Returns trace in Jaeger's internal format (not OTLP).
+    """
+    logger.info(f"Legacy: Fetching trace by ID: {trace_id}")
+    traces, _, _ = fetch_traces_from_connect(
+        application=application,
+        job_key=jobKey,
+        trace_id=trace_id,
+        limit=MAX_TRACE_LIMIT
+    )
+
+    if not traces:
+        logger.warning(f"Trace not found: {trace_id}")
+        raise HTTPException(status_code=404, detail="Trace not found")
+
+    # Transform to Jaeger format
+    jaeger_traces = transform_otlp_to_jaeger_format(traces)
+
+    if not jaeger_traces:
+        logger.warning(f"Trace transformation failed for: {trace_id}")
+        raise HTTPException(status_code=404, detail="Trace not found")
+
+    logger.info(f"Successfully retrieved trace: {trace_id}")
+    # Legacy API returns {"data": [trace]} with Jaeger format
+    return JSONResponse({
+        "data": [jaeger_traces[0]]
+    })
+
+
 @app.get("/api/v3/traces/{trace_id}", response_model=TraceResponse)
 def get_trace(
     trace_id: str,
@@ -540,7 +617,7 @@ def get_trace(
         application=application,
         job_key=jobKey,
         trace_id=trace_id,
-        limit=0
+        limit=MAX_TRACE_LIMIT
     )
 
     if not traces:
@@ -582,10 +659,11 @@ def search_traces(
     logger.info(f"V3 trace search: service={service}, operation={operation}, num_traces={num_traces}")
 
     # Fetch traces from Connect
+    # Note: We fetch MAX_TRACE_LIMIT spans to ensure complete traces, then limit after processing
     traces, total_count, file_size = fetch_traces_from_connect(
         application=application,
         job_key=jobKey,
-        limit=num_traces,
+        limit=MAX_TRACE_LIMIT,
         start_time_min=start_time_min
     )
 
@@ -750,13 +828,16 @@ def get_dependencies():
 
 
 @app.get("/api/applications", response_model=List[Application])
-def get_applications():
+def get_applications(q: Optional[str] = Query(None, description="Search query to filter applications")):
     """
     Get list of all Shiny applications from Connect.
 
+    Args:
+        q: Optional search query to filter applications
+
     Returns: Array of applications with guid, name, and title
     """
-    logger.info("Fetching Shiny applications from Connect")
+    logger.info(f"Fetching Shiny applications from Connect (q={q})")
 
     if not connect_client:
         logger.error("Connect client not initialized")
@@ -768,13 +849,19 @@ def get_applications():
     try:
         # Use Connect's search endpoint to find all Shiny applications
         path = "v1/search/content"
+
+        # Build the query string
+        query_string = "type:shiny"
+        if q:
+            query_string = f"{query_string} {q}"
+
         params = {
-            "q": "type:shiny owner:@me",
+            "q": query_string,
             "published": True,
             "sort": "last_deployed_time",
             "order": "desc",
             "page_number": 1,
-            "page_size": 100
+            "page_size": 10
         }
 
         response = connect_client.get(path, params=params)
