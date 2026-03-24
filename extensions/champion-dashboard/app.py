@@ -521,10 +521,10 @@ def get_application_count(metrics: Dict) -> Dict:
 
     for labels, value in application_count:
         application_type = labels.get('application_type')
-        if not application_type:
-            result['total'] = int(value)
-        else:
+        if application_type:
             result['by_type'][application_type] = int(value)
+
+    result['total'] = sum(result['by_type'].values())
 
     return result
 
