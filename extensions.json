@@ -82,9 +82,9 @@
       "description": "A dashboard containing various OTEL metrics from your Connect server.",
       "homepage": "https://github.com/posit-dev/connect-staging-extensions/tree/main/extensions/champion-dashboard",
       "latestVersion": {
-        "version": "1.0.8",
-        "released": "2026-01-30T00:40:12Z",
-        "url": "https://github.com/posit-dev/connect-staging-extensions/releases/download/champion-dashboard%40v1.0.8/champion-dashboard.tar.gz",
+        "version": "1.0.9",
+        "released": "2026-03-31T20:48:32Z",
+        "url": "https://github.com/posit-dev/connect-staging-extensions/releases/download/champion-dashboard%40v1.0.9/champion-dashboard.tar.gz",
         "minimumConnectVersion": "connect-preview",
         "requiredEnvironment": {
           "python": {
@@ -93,6 +93,17 @@
         }
       },
       "versions": [
+        {
+          "version": "1.0.9",
+          "released": "2026-03-31T20:48:32Z",
+          "url": "https://github.com/posit-dev/connect-staging-extensions/releases/download/champion-dashboard%40v1.0.9/champion-dashboard.tar.gz",
+          "minimumConnectVersion": "connect-preview",
+          "requiredEnvironment": {
+            "python": {
+              "requires": ">=3.10"
+            }
+          }
+        },
         {
           "version": "1.0.8",
           "released": "2026-01-30T00:40:12Z",
