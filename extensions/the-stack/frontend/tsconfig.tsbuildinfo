@@ -1,0 +1,1 @@
+{"root":["./src/guid.ts","./src/main.ts","./src/api/client.ts","./src/types/logs.ts","./src/types/traces.ts","./src/app.vue","./src/components/logtable.vue","./src/components/searchbar.vue","./src/components/spandetail.vue","./src/components/timefilter.vue","./src/components/timelinehistogram.vue","./src/components/tracetable.vue","./vite-env.d.ts"],"version":"5.7.3"}

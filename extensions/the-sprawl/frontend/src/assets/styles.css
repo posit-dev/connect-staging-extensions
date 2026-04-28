@@ -1,0 +1,112 @@
+:root {
+  --blue-50: #f8fafb;
+  --blue-100: #e8edf2;
+  --blue-200: #d1dbe5;
+  --blue-300: #a2b8cb;
+  --blue-400: #7494b1;
+  --blue-500: #447099;
+  --blue-600: #305775;
+  --blue-700: #294a62;
+  --blue-800: #213d4f;
+
+  --gray-50: #f6f6f6;
+  --gray-100: #e1e1e1;
+  --gray-200: #c2c2c4;
+  --gray-300: #949494;
+  --gray-400: #707073;
+  --gray-500: #404041;
+  --gray-600: #333333;
+  --gray-700: #2c2c2d;
+  --gray-800: #242426;
+  --gray-900: #1d1d1e;
+
+  --green-100: #e8ece3;
+  --green-500: #72994e;
+  --green-800: #3b4f29;
+
+  --red-50: #fef1ef;
+  --red-100: #fcd1c9;
+  --red-300: #e57366;
+  --red-500: #d44000;
+  --red-600: #a62103;
+  --red-700: #921e03;
+
+  --orange-50: #fcf7f5;
+  --orange-500: #ee6331;
+  --orange-800: #80361c;
+
+  --otel-bg: #ede9fe;
+  --otel-text: #5b21b6;
+
+  --font-sans: "Open Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Source Code Pro", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* Semantic aliases for component styles */
+  --bg-primary: #fff;
+  --bg-secondary: var(--gray-50);
+  --bg-elevated: #fff;
+  --bg-hover: var(--blue-50);
+  --bg-active: var(--blue-100);
+  --border: var(--gray-200);
+  --border-light: var(--gray-100);
+  --text-primary: var(--gray-900);
+  --text-secondary: var(--gray-600);
+  --text-muted: var(--gray-400);
+  --accent-blue: var(--blue-500);
+  --accent-blue-dim: var(--blue-100);
+  --accent-green: var(--green-500);
+  --accent-green-dim: var(--green-100);
+  --accent-red: var(--red-500);
+  --accent-red-dim: var(--red-50);
+  --accent-orange: var(--orange-500);
+  --accent-orange-dim: var(--orange-50);
+  --accent-warn: #b8860b;
+  --accent-warn-dim: #fff8e1;
+  --accent-purple: #7c3aed;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: #fff;
+  color: var(--gray-900);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-size: 14px;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--gray-50);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--gray-300);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--gray-400);
+}
+
+input, select, button {
+  font-family: inherit;
+}
+
+a {
+  color: var(--blue-500);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
