@@ -154,6 +154,33 @@ For example, if your content requires the API Publishing feature your
 }
 ```
 
+#### Thumbnail
+
+The `imgUrl` field in the `extension` section of the `manifest.json` is optional.
+It sets the image shown on the content's card in the Connect Gallery; without it,
+the card falls back to a generic placeholder icon.
+
+The Connect Gallery uses `imgUrl` directly as an image source, so it must be an
+absolute, publicly reachable URL — a path relative to the repository will not
+resolve. The recommended approach is to commit the image alongside your content
+and reference its raw GitHub URL:
+
+```json
+// manifest.json
+
+{
+  ...
+  "extension": {
+    "imgUrl": "https://raw.githubusercontent.com/posit-dev/connect-staging-extensions/main/extensions/my-content-name/thumbnail.png",
+    ...
+  }
+}
+```
+
+The gallery displays the image in a small square (50x50 pixels), so a simple
+logo or icon works best. A detailed image or screenshot may not be legible at
+that size.
+
 ### README.md
 
 In the above extension section there is a `homepage` link that we provide in the
