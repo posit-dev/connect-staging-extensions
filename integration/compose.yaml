@@ -32,6 +32,8 @@ services:
       - CONNECT_BOOTSTRAP_ENABLED=true
       - CONNECT_BOOTSTRAP_SECRETKEY=${CONNECT_BOOTSTRAP_SECRETKEY}
       - CONNECT_APPLICATIONS_PACKAGEAUDITINGENABLED=true
+      # Enable Node.js content support so nodejs-app-mode extensions can deploy.
+      - CONNECT_NODEJS_ENABLED=true
       - CONNECT_API_KEY  # The API key generated from the Makefile test target
       # Connect configuration overrides https://docs.posit.co/connect/admin/appendix/configuration/#environment-variables
       - CONNECT_SERVER_SENDEREMAIL=no-reply@example.com
