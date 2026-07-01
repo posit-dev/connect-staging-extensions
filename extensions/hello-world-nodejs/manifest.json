@@ -13,11 +13,6 @@
       "package_file": "package.json"
     }
   },
-  "environment": {
-    "nodejs": {
-      "requires": ">=22"
-    }
-  },
   "extension": {
     "name": "hello-world-nodejs",
     "title": "Node.js: Hello World",
@@ -25,7 +20,7 @@
     "homepage": "https://github.com/posit-dev/connect-staging-extensions/tree/main/extensions/hello-world-nodejs",
     "category": "example",
     "minimumConnectVersion": "connect-preview",
-    "version": "0.0.0"
+    "version": "0.0.1"
   },
   "files": {
     "index.js": {
