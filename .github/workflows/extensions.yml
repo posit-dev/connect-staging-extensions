@@ -31,6 +31,7 @@ jobs:
           filters: |
             champion-dashboard: extensions/champion-dashboard/**
             app-traces-jaeger-ui: extensions/app-traces-jaeger-ui/**
+            hello-world-nodejs: extensions/hello-world-nodejs/**
 
   # Runs for each extension that has changed from `simple-extension-changes`
   # Lints and packages in preparation for tests and and release.
