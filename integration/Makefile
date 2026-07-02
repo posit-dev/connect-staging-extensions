@@ -22,9 +22,11 @@ DOCKER_CONNECT_IMAGE ?= rstudio/rstudio-connect
 DOCKER_PROJECT_IMAGE_TAG ?= $(PROJECT_NAME):latest
 EXTENSION_NAME ?=
 
-# Docker image settings specifically for the preview version
+# Docker image settings specifically for the preview version.
+# Pinned to a maintained preview tag; the old `dev-jammy-daily` tag stopped
+# being published in 2025 and lagged behind Node.js support.
 preview_DOCKER_CONNECT_IMAGE := rstudio/rstudio-connect-preview
-preview_DOCKER_CONNECT_IMAGE_TAG := dev-jammy-daily
+preview_DOCKER_CONNECT_IMAGE_TAG := jammy-2026.07.0
 
 CONNECT_SERVER ?= http://connect:3939
 
