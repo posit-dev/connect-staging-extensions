@@ -16,7 +16,7 @@
   "extension": {
     "name": "hello-world-nodejs",
     "title": "Node.js: Hello World",
-    "description": "A minimal Node.js HTTP server that returns a JSON greeting — a starting point for any Node.js service on Connect.",
+    "description": "A minimal Node.js HTTP server that returns a JSON greeting. A starting point for any Node.js service on Connect.",
     "homepage": "https://github.com/posit-dev/connect-staging-extensions/tree/main/extensions/hello-world-nodejs",
     "category": "example",
     "minimumConnectVersion": "2026.06.0",
