@@ -23,13 +23,19 @@ cd "$(dirname "$0")"
 mkdir -p reports logs
 
 # Start Connect without Node. with-connect prints CONNECT_API_KEY,
-# CONNECT_SERVER, and CONTAINER_ID for us to eval into this shell.
+# CONNECT_SERVER, and CONTAINER_ID for us to eval into this shell. Capture first so
+# a with-connect failure surfaces here, instead of eval'ing "" and failing later
+# with a misleading error.
 CONNECT_API_KEY=""
 CONNECT_SERVER=""
 CONTAINER_ID=""
-eval "$("$WITH_CONNECT" --version "$CONNECT_VERSION" --license "$LICENSE_FILE" \
+if ! with_connect_env="$("$WITH_CONNECT" --version "$CONNECT_VERSION" --license "$LICENSE_FILE" \
   -e CONNECT_SERVER_EMAILPROVIDER=None \
-  -e CONNECT_APPLICATIONS_PACKAGEAUDITINGENABLED=true)"
+  -e CONNECT_APPLICATIONS_PACKAGEAUDITINGENABLED=true)"; then
+  echo "Error: with-connect failed to start Connect $CONNECT_VERSION" >&2
+  exit 1
+fi
+eval "$with_connect_env"
 
 # Always stop Connect on exit, however we exit.
 trap '"$WITH_CONNECT" --stop "$CONTAINER_ID" >/dev/null 2>&1 || true' EXIT
