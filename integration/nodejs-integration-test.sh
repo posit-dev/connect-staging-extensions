@@ -16,7 +16,6 @@ EXTENSION_NAME="${2:?extension name required}"
 : "${LICENSE_FILE:=./license.lic}"
 : "${UV:=uv}"
 : "${PYTEST_ARGS:=-s}"
-: "${NODE_VERSION:=24.14.0}"
 
 cd "$(dirname "$0")"
 mkdir -p reports logs

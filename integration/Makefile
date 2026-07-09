@@ -13,10 +13,6 @@ UV_LOCK := uv.lock
 WITH_CONNECT ?= with-connect
 LICENSE_FILE ?= ./license.lic
 
-# Node.js provisioning: the version installed into the container for nodejs
-# extensions (must satisfy their engines.node). Matches the CI action.
-NODE_VERSION ?= 24.14.0
-
 # Extension settings
 EXTENSION_NAME ?=
 
@@ -106,7 +102,7 @@ $(CONNECT_VERSIONS): %:
 	@mkdir -p reports logs
 	@APPMODE=$$(python3 -c "import json; print(json.load(open('../extensions/$(EXTENSION_NAME)/manifest.json')).get('metadata', {}).get('appmode', ''))" 2>/dev/null || echo ""); \
 	if [ "$$APPMODE" = "nodejs" ]; then \
-		NODE_VERSION="$(NODE_VERSION)" WITH_CONNECT="$(WITH_CONNECT)" LICENSE_FILE="$(LICENSE_FILE)" UV="$(UV)" PYTEST_ARGS="$$(echo $(PYTEST_ARGS))" \
+		WITH_CONNECT="$(WITH_CONNECT)" LICENSE_FILE="$(LICENSE_FILE)" UV="$(UV)" PYTEST_ARGS="$$(echo $(PYTEST_ARGS))" \
 			bash nodejs-integration-test.sh "$*" "$(EXTENSION_NAME)"; \
 	else \
 		$(WITH_CONNECT) --version $* --license $(LICENSE_FILE) \
