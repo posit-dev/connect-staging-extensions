@@ -27,5 +27,38 @@
     "Current User Execution",
     "OpenTelemetry"
   ],
-  "extensions": []
+  "extensions": [
+    {
+      "name": "hello-world-nodejs",
+      "title": "Node.js: Hello World",
+      "description": "A minimal Node.js HTTP server that returns a JSON greeting. A starting point for any Node.js service on Connect.",
+      "homepage": "https://github.com/posit-dev/connect-staging-extensions/tree/main/extensions/hello-world-nodejs",
+      "latestVersion": {
+        "version": "0.0.1",
+        "released": "2026-07-10T14:47:41Z",
+        "url": "https://github.com/posit-dev/connect-staging-extensions/releases/download/hello-world-nodejs%40v0.0.1/hello-world-nodejs.tar.gz",
+        "minimumConnectVersion": "2026.06.0",
+        "requiredEnvironment": {
+          "nodejs": {
+            "requires": ">=22.18.0"
+          }
+        }
+      },
+      "versions": [
+        {
+          "version": "0.0.1",
+          "released": "2026-07-10T14:47:41Z",
+          "url": "https://github.com/posit-dev/connect-staging-extensions/releases/download/hello-world-nodejs%40v0.0.1/hello-world-nodejs.tar.gz",
+          "minimumConnectVersion": "2026.06.0",
+          "requiredEnvironment": {
+            "nodejs": {
+              "requires": ">=22.18.0"
+            }
+          }
+        }
+      ],
+      "tags": [],
+      "category": "example"
+    }
+  ]
 }
