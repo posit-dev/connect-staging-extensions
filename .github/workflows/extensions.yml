@@ -30,6 +30,7 @@ jobs:
           # e.g. `extension-name: extensions/extension-name/**`
           filters: |
             hello-world-nodejs: extensions/hello-world-nodejs/**
+            express-transaction-monitor: extensions/express-transaction-monitor/**
 
   # Runs for each extension that has changed from `simple-extension-changes`
   # Lints and packages in preparation for tests and and release.

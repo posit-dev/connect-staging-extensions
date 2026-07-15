@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Real-Time Transaction Monitor</title>
+    <!-- Relative URL so it resolves behind Connect's content path prefix. -->
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app">
+      <header class="app-header">
+        <h1>Real-Time Transaction Monitor</h1>
+        <p class="status" id="status" data-state="connecting">
+          <span class="status-dot" aria-hidden="true"></span>
+          <span id="status-text">Connecting…</span>
+        </p>
+      </header>
+
+      <!-- KPI row: running totals accumulated from the live stream. -->
+      <section class="tiles" aria-label="Running totals">
+        <div class="tile">
+          <div class="tile-label">Total volume</div>
+          <div class="tile-value" id="stat-volume">$0</div>
+        </div>
+        <div class="tile">
+          <div class="tile-label">Transactions</div>
+          <div class="tile-value" id="stat-count">0</div>
+        </div>
+        <div class="tile">
+          <div class="tile-label">Flagged</div>
+          <div class="tile-value" id="stat-flagged">0</div>
+        </div>
+        <div class="tile">
+          <div class="tile-label">Flagged rate</div>
+          <div class="tile-value" id="stat-rate">0.0%</div>
+        </div>
+      </section>
+
+      <section class="feed" aria-label="Live transaction feed">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Time</th>
+              <th scope="col">Merchant</th>
+              <th scope="col">Category</th>
+              <th scope="col">Location</th>
+              <th scope="col" class="num">Amount</th>
+              <th scope="col">Status</th>
+            </tr>
+          </thead>
+          <tbody id="rows">
+            <tr class="empty">
+              <td colspan="6">Waiting for transactions…</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+    </main>
+
+    <!-- Relative URL, same reason as the stylesheet. -->
+    <script src="app.js"></script>
+  </body>
+</html>

@@ -19,7 +19,10 @@
     "llm",
     "chat",
     "quarto",
-    "r"
+    "r",
+    "nodejs",
+    "javascript",
+    "express"
   ],
   "requiredFeatures": [
     "API Publishing",
