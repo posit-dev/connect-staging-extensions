@@ -1,9 +1,3 @@
-// Express: Real-Time Transaction Monitor
-//
-// An Express server that streams a live feed of card transactions to the browser
-// over Server-Sent Events (SSE). The data is simulated in this file so the app runs
-// the moment it is deployed; see the README for how to point it at a real source.
-
 const express = require("express");
 const path = require("path");
 
@@ -13,12 +7,11 @@ const app = express();
 // fixed port for local development.
 const PORT = process.env.PORT || 3000;
 
-// Serve the dashboard (public/index.html and its assets). Static files are referenced
-// with relative URLs so they resolve correctly behind Connect's content path prefix.
 app.use(express.static(path.join(__dirname, "public")));
 
-// --- Simulated transaction feed -------------------------------------------------
-
+// The feed is simulated here so the app runs with no external source. Swap
+// makeTransaction() for a real one (a queue, a database change feed, a webhook) to
+// adapt it.
 const MERCHANTS = [
   { name: "Blue Bottle Coffee", category: "Dining" },
   { name: "Whole Foods Market", category: "Groceries" },
@@ -49,8 +42,8 @@ function pick(list) {
 
 let nextId = 1;
 
-// Build one transaction and decide whether it looks fraudulent. The rules are
-// deliberately simple and explainable: this is where you would plug in a real model.
+// The fraud rules are deliberately simple; this is where you would plug in a real
+// model or rules engine.
 function makeTransaction() {
   const merchant = pick(MERCHANTS);
   const location = pick(LOCATIONS);
@@ -84,10 +77,6 @@ function makeTransaction() {
   };
 }
 
-// --- Server-Sent Events endpoint ------------------------------------------------
-
-// GET /events holds the connection open and pushes one transaction per second. The
-// browser subscribes with EventSource; the dashboard aggregates the running totals.
 app.get("/events", (req, res) => {
   res.writeHead(200, {
     "Content-Type": "text/event-stream",

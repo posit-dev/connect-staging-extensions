@@ -1,6 +1,3 @@
-// Subscribe to the server's Server-Sent Events stream and render each transaction
-// as it arrives, keeping the running totals in the tiles up to date.
-
 const rowsEl = document.getElementById("rows");
 const statusEl = document.getElementById("status");
 const statusTextEl = document.getElementById("status-text");
@@ -69,7 +66,6 @@ function addTransaction(tx) {
   if (tx.status === "flagged") flagged += 1;
   updateTotals();
 
-  // Drop the "waiting" placeholder on the first real row.
   const placeholder = rowsEl.querySelector(".empty");
   if (placeholder) placeholder.remove();
 

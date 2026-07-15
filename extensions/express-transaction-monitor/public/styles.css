@@ -181,7 +181,6 @@ tr.flagged td:first-child {
   font-weight: 400;
 }
 
-/* Newest row briefly highlights as it arrives. */
 @keyframes flash {
   from {
     background: var(--gridline);
