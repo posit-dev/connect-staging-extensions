@@ -764,7 +764,7 @@ server <- function(input, output, session) {
           )
           if (!isTRUE(ok)) {
             notify(
-              "Collection published, but the visitor-key integration could not be attached automatically. Per-viewer item filtering will fall back to the publisher's view until the integration is attached in Connect.",
+              "Collection published, but the visitor-key integration could not be attached automatically. Until the integration is attached in Connect, the collection may be unable to mint visitor-scoped API keys for viewers.",
               type = "warning"
             )
           }
