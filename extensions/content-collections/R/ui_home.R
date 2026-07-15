@@ -109,7 +109,7 @@
       shiny::tags$li("Limited theming options."),
       shiny::tags$li("Sharing a collection only shares the collection itself — recipients still need access to each item inside it.")
     ),
-    shiny::tags$div(class = "small mr-2",
+    shiny::tags$div(class = "small me-2",
       "Have feedback? ",
       shiny::tags$a(href = "https://forum.posit.co/", target = "_blank",
                     class = "alert-link", "Tell us on Posit Community ↗")
