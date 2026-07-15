@@ -16,7 +16,7 @@
   "extension": {
     "name": "express-transaction-monitor",
     "title": "Express: Real-Time Transaction Monitor",
-    "description": "Stream live data to the browser as it happens with an Express app that uses Server-Sent Events. This example monitors a simulated feed of bank card transactions, flagging suspicious ones and updating running totals (volume, transaction count, flagged count and rate) in real time with no page refresh. The data is generated on the server so it runs the moment you deploy it; point the stream at your own source (a message queue, a database change feed, a webhook) to monitor any live event feed.",
+    "description": "Stream live data to the browser as it happens with an Express app using Server-Sent Events. It monitors a simulated feed of bank card transactions, flagging suspicious ones and updating running totals (volume, transaction count, and flagged rate) in real time with no page refresh. A starting point for any live feed; point the stream at your own source, like a message queue, a database change feed, or a webhook.",
     "homepage": "https://github.com/posit-dev/connect-staging-extensions/tree/main/extensions/express-transaction-monitor",
     "category": "example",
     "tags": ["nodejs", "javascript", "express"],

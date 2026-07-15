@@ -1,22 +1,19 @@
 # Express: Real-Time Transaction Monitor
 
+## About this example
+
 An Express app that streams a live feed of card transactions to the browser over
 Server-Sent Events (SSE), flagging suspicious ones and keeping running totals up to
 date with no page refresh. It's themed as a bank fraud monitor, but the pattern fits
-any live event feed. Deploy it as a starting point for streaming your own data to a
-dashboard on Connect.
+any live event feed: a dashboard that updates itself as data arrives, without polling.
 
-## About this example
-
-The server generates a simulated stream of transactions (about one per second),
-applies a few simple fraud rules, and pushes each one to every connected browser.
-The page subscribes once and updates in place: new transactions appear at the top of
-the feed, flagged ones are highlighted, and the tiles track total volume, transaction
-count, and how many were flagged.
-
-Because the data is simulated in the app, it runs the moment you deploy it, with no
-database or external service to configure. It's for anyone who wants to serve
-live-updating content from Node.js on Connect and see the end-to-end pattern.
+The server generates a simulated stream (about one transaction per second), applies a
+few simple fraud rules, and pushes each one to every connected browser, so the app
+runs the moment you deploy it with no database or external service to configure. The
+page subscribes once and updates in place: new transactions appear at the top of the
+feed, flagged ones are highlighted, and the tiles track total volume, transaction
+count, and how many were flagged. It's for anyone who wants to serve live-updating
+content from Node.js on Connect and see the end-to-end pattern.
 
 ## How it works
 
@@ -51,8 +48,9 @@ run a customized version, get the
 [example source](https://github.com/posit-dev/connect-staging-extensions/tree/main/extensions/express-transaction-monitor),
 make your changes, and publish it with a
 [git-backed deployment](https://docs.posit.co/connect/user/git-backed/) or the
-[`rsconnect` CLI](https://docs.posit.co/connect/user/publishing-cli-notebook/). This
-example requires Connect 2026.06.0 or later, the release that added Node.js support.
+[rsconnect Python CLI](https://docs.posit.co/rsconnect-python/) (`rsconnect deploy
+manifest`). Requires Connect 2026.06.0 or later, the release that added Node.js
+support.
 
 ## Learn more
 
