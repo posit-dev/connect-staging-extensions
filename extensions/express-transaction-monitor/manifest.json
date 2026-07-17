@@ -16,7 +16,7 @@
   "extension": {
     "name": "express-transaction-monitor",
     "title": "Express: Real-Time Transaction Monitor",
-    "description": "Stream live data to the browser as it happens with an Express app using Server-Sent Events. It monitors a simulated feed of bank card transactions, flagging suspicious ones and updating running totals (volume, transaction count, and flagged rate) in real time with no page refresh. A starting point for any live feed; point the stream at your own source, like a message queue, a database change feed, or a webhook.",
+    "description": "Stream live data to the browser as it happens with an Express app using Server-Sent Events, and let a team act on it together. It monitors a simulated feed of bank card transactions, sends the suspicious ones to a shared review queue, and attributes each acknowledge or escalate to the signed-in viewer using their Connect identity. A starting point for any live, collaborative dashboard; point the stream at your own source, like a message queue, a database change feed, or a webhook.",
     "homepage": "https://github.com/posit-dev/connect-staging-extensions/tree/main/extensions/express-transaction-monitor",
     "category": "example",
     "tags": ["nodejs", "javascript", "express"],
@@ -25,7 +25,7 @@
   },
   "files": {
     "index.js": {
-      "checksum": "16b7cb113a20921904bef38d5bc995c5"
+      "checksum": "66b47aedf6187b4c024bd931ad021c60"
     },
     "package.json": {
       "checksum": "8410a82e3d027dc1d6283b65072741cc"
@@ -34,13 +34,13 @@
       "checksum": "374c19ed1a814a23ab605fb6167214b5"
     },
     "public/index.html": {
-      "checksum": "1ad1ac5e5e39f3055a3e75c948bb45ac"
+      "checksum": "bb77b7280f8cca068f471ba902c8876f"
     },
     "public/styles.css": {
-      "checksum": "9a90a93396f9d7f4a447e27392ebf6ec"
+      "checksum": "ad4fa0bac12c8a2dd60fee3447234a2a"
     },
     "public/app.js": {
-      "checksum": "b4c31604bd413cfee7476a64c6b0e827"
+      "checksum": "845c7636990bfead26da59e7e82c1d02"
     }
   }
 }

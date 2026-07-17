@@ -2,12 +2,11 @@ const express = require("express");
 const path = require("path");
 
 const app = express();
+app.use(express.json());
 
 // Connect assigns the port through the PORT environment variable; fall back to a
 // fixed port for local development.
 const PORT = process.env.PORT || 3000;
-
-app.use(express.static(path.join(__dirname, "public")));
 
 // The feed is simulated here so the app runs with no external source. Swap
 // makeTransaction() for a real one (a queue, a database change feed, a webhook) to
@@ -77,6 +76,97 @@ function makeTransaction() {
   };
 }
 
+// Shared server-side state, so every connected analyst sees the same feed, the same
+// review queue, and the same running totals. This lives in memory in one process, so
+// deploy the content with Max processes set to 1 (see the README).
+const clients = new Set(); // connected browsers, for broadcasting
+const reviewQueue = []; // flagged transactions still awaiting review
+const totals = { count: 0, volume: 0, flagged: 0, escalated: 0 };
+
+const MAX_QUEUE = 50; // cap the pending queue so an unwatched feed can't grow forever
+
+// The pending count is just the queue length; bundle it with the totals the tiles show.
+function stats() {
+  return { ...totals, pending: reviewQueue.length };
+}
+
+// Send one Server-Sent Event to every connected browser.
+function broadcast(event, data) {
+  const payload = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+  for (const res of clients) res.write(payload);
+}
+
+// --- Viewer identity (the Connect-flavored part) ---
+// Connect injects these into the content's environment at runtime.
+const CONNECT_SERVER = process.env.CONNECT_SERVER;
+const CONNECT_API_KEY = process.env.CONNECT_API_KEY;
+const viewerNames = new Map(); // session token -> resolved name, cached per process
+
+// Resolve who is making a request from their Connect identity, so review actions are
+// attributed to the real signed-in analyst instead of something the browser claims.
+// Falls back to a generic label off Connect or without the Visitor API Key integration,
+// so the app still runs everywhere.
+async function resolveViewer(req) {
+  const token = req.get("Posit-Connect-User-Session-Token");
+  // No token means we are off Connect or nobody is signed in; nothing to prompt for.
+  if (!token || !CONNECT_SERVER || !CONNECT_API_KEY) {
+    return { name: "Anonymous analyst", status: "anonymous" };
+  }
+  if (viewerNames.has(token)) {
+    return { name: viewerNames.get(token), status: "signed-in" };
+  }
+
+  try {
+    const base = CONNECT_SERVER.replace(/\/$/, "");
+    // Exchange the viewer's session token for a short-lived key scoped to them.
+    const credRes = await fetch(
+      `${base}/__api__/v1/oauth/integrations/credentials`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Key ${CONNECT_API_KEY}`,
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: new URLSearchParams({
+          grant_type: "urn:ietf:params:oauth:grant-type:token-exchange",
+          subject_token_type: "urn:posit:connect:user-session-token",
+          subject_token: token,
+          requested_token_type: "urn:posit:connect:api-key",
+        }),
+      },
+    );
+    if (!credRes.ok) throw new Error(`credential exchange failed: ${credRes.status}`);
+    const { access_token } = await credRes.json();
+
+    // Ask Connect who that key belongs to. Using the viewer's own key means Connect
+    // answers with the viewer, not with this app's owner.
+    const meRes = await fetch(`${base}/__api__/v1/user`, {
+      headers: { Authorization: `Key ${access_token}` },
+    });
+    if (!meRes.ok) throw new Error(`whoami failed: ${meRes.status}`);
+    const me = await meRes.json();
+
+    const name =
+      `${me.first_name || ""} ${me.last_name || ""}`.trim() ||
+      me.username ||
+      "Analyst";
+    viewerNames.set(token, name);
+    return { name, status: "signed-in" };
+  } catch (err) {
+    // On Connect but the exchange failed, most often because the Visitor API Key
+    // integration is not configured. Report that so the browser can prompt for it.
+    console.error("Viewer identity lookup failed:", err.message);
+    return { name: "Anonymous analyst", status: "unconfigured" };
+  }
+}
+
+app.use(express.static(path.join(__dirname, "public")));
+
+// Who is viewing, shown in the header (with a setup prompt when identity is off).
+app.get("/whoami", async (req, res) => {
+  res.json(await resolveViewer(req));
+});
+
 app.get("/events", (req, res) => {
   res.writeHead(200, {
     "Content-Type": "text/event-stream",
@@ -87,20 +177,60 @@ app.get("/events", (req, res) => {
     "X-Accel-Buffering": "no",
   });
   res.flushHeaders();
+  clients.add(res);
 
-  const tick = setInterval(() => {
-    res.write(`data: ${JSON.stringify(makeTransaction())}\n\n`);
-  }, 1000);
+  // Seed the new browser with the shared state, so an analyst who joins late sees the
+  // current totals and everything still awaiting review, not just what happens next.
+  res.write(
+    `event: snapshot\ndata: ${JSON.stringify({ stats: stats(), queue: reviewQueue })}\n\n`,
+  );
 
   // Comment lines act as heartbeats that keep idle proxies from closing the stream.
   const heartbeat = setInterval(() => res.write(": keep-alive\n\n"), 15000);
 
-  // Stop generating events once the browser disconnects.
   req.on("close", () => {
-    clearInterval(tick);
     clearInterval(heartbeat);
+    clients.delete(res);
   });
 });
+
+// An analyst acknowledges (looks fine) or escalates (real fraud) a flagged transaction.
+app.post("/review", async (req, res) => {
+  const { id, action } = req.body || {};
+  if (action !== "acknowledge" && action !== "escalate") {
+    return res.status(400).json({ error: "Unknown action" });
+  }
+
+  const idx = reviewQueue.findIndex((t) => t.id === id);
+  if (idx === -1) {
+    // Another analyst already reviewed it, or it aged off the queue.
+    return res.status(409).json({ error: "Already reviewed" });
+  }
+  reviewQueue.splice(idx, 1);
+  if (action === "escalate") totals.escalated += 1;
+
+  const { name: by } = await resolveViewer(req);
+  // Tell every browser who reviewed it, so the shared queue updates live for everyone.
+  broadcast("review", { id, action, by, at: new Date().toISOString(), stats: stats() });
+  res.json({ ok: true });
+});
+
+// One shared feed for the whole server: generate a transaction each second and push it
+// to every connected browser. Pause when nobody is watching so the totals only reflect
+// activity someone actually saw.
+setInterval(() => {
+  if (clients.size === 0) return;
+
+  const tx = makeTransaction();
+  totals.count += 1;
+  totals.volume += tx.amount;
+  if (tx.status === "flagged") {
+    totals.flagged += 1;
+    reviewQueue.unshift(tx);
+    while (reviewQueue.length > MAX_QUEUE) reviewQueue.pop();
+  }
+  broadcast("transaction", { tx, stats: stats() });
+}, 1000);
 
 app.listen(PORT, () => {
   console.log(`Transaction monitor listening on port ${PORT}`);

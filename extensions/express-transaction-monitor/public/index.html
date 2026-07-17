@@ -11,11 +11,50 @@
     <main class="app">
       <header class="app-header">
         <h1>Real-Time Transaction Monitor</h1>
-        <p class="status" id="status" data-state="connecting">
-          <span class="status-dot" aria-hidden="true"></span>
-          <span id="status-text">Connecting…</span>
-        </p>
+        <div class="app-header-meta">
+          <p class="viewer" id="viewer"></p>
+          <p class="status" id="status" data-state="connecting">
+            <span class="status-dot" aria-hidden="true"></span>
+            <span id="status-text">Connecting…</span>
+          </p>
+        </div>
       </header>
+
+      <details class="about">
+        <summary>About this demo</summary>
+        <div class="about-body">
+          <p>
+            This app is an example of running a Node.js app on Connect. It uses the
+            <strong>Express</strong> framework to serve a shared fraud-review
+            dashboard that updates live as new data arrives, with no page refresh.
+          </p>
+          <p>
+            The data is <strong>simulated</strong>. The server creates about one card
+            transaction every second, so nothing you see is a real account or
+            payment. A few simple rules flag suspicious charges, such as large
+            amounts or charges from outside the US.
+          </p>
+          <p>
+            Flagged charges go to a shared <strong>review queue</strong>. Anyone
+            viewing the app can acknowledge or escalate a charge, and everyone sees
+            the result live over <strong>Server-Sent Events</strong>. Each action is
+            labeled with the reviewer's <strong>Connect identity</strong>, which the
+            server looks up from the signed-in viewer.
+          </p>
+        </div>
+      </details>
+
+      <!-- Shown only when running on Connect without the Visitor API Key integration. -->
+      <p class="notice" id="identity-notice" hidden>
+        Review actions are recorded as "Anonymous analyst." Add the
+        <a
+          href="https://docs.posit.co/connect/user/oauth-integrations/"
+          target="_blank"
+          rel="noopener"
+          >Connect Visitor API Key integration</a
+        >
+        so each one shows the reviewer's name.
+      </p>
 
       <section class="tiles" aria-label="Running totals">
         <div class="tile">
@@ -27,16 +66,29 @@
           <div class="tile-value" id="stat-count">0</div>
         </div>
         <div class="tile">
-          <div class="tile-label">Flagged</div>
-          <div class="tile-value" id="stat-flagged">0</div>
+          <div class="tile-label">Awaiting review</div>
+          <div class="tile-value" id="stat-pending">0</div>
         </div>
         <div class="tile">
-          <div class="tile-label">Flagged rate</div>
-          <div class="tile-value" id="stat-rate">0.0%</div>
+          <div class="tile-label">Escalated</div>
+          <div class="tile-value" id="stat-escalated">0</div>
         </div>
       </section>
 
-      <section class="feed" aria-label="Live transaction feed">
+      <section class="panel" aria-label="Review queue">
+        <div class="panel-head">
+          <h2>Needs review</h2>
+          <p>Acknowledge or escalate each flagged charge. Everyone sees the decision live.</p>
+        </div>
+        <div class="queue" id="queue">
+          <div class="empty">Waiting for flagged transactions…</div>
+        </div>
+      </section>
+
+      <section class="panel feed" aria-label="Live transaction feed">
+        <div class="panel-head">
+          <h2>Live feed</h2>
+        </div>
         <table>
           <thead>
             <tr>

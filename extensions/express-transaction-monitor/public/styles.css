@@ -86,6 +86,59 @@ h1 {
   background: var(--critical);
 }
 
+/* Signed-in viewer and connection status, stacked at the top right. */
+.app-header-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.125rem;
+}
+.viewer {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+/* Setup prompt shown when viewer identity is unavailable on Connect. */
+.notice {
+  margin: 0 0 1.5rem;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.notice a {
+  color: inherit;
+}
+
+/* Collapsed by default so the dashboard stays clean; expands on click via the
+   native <details> element, no script needed. */
+.about {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+  font-size: 0.875rem;
+}
+.about summary {
+  padding: 0.75rem 1.25rem;
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.about[open] summary {
+  border-bottom: 1px solid var(--border);
+}
+.about-body {
+  padding: 0.25rem 1.25rem 0.75rem;
+  color: var(--text-secondary);
+}
+.about-body p {
+  margin: 0.75rem 0;
+}
+
 .tiles {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -118,11 +171,102 @@ h1 {
   color: var(--critical);
 }
 
-.feed {
+/* Both the review queue and the live feed are cards with a heading. */
+.panel {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 12px;
+  margin-bottom: 1.5rem;
   overflow: hidden;
+}
+.panel-head {
+  padding: 0.875rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+}
+.panel-head h2 {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  margin: 0;
+}
+.panel-head p {
+  margin: 0.25rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+/* Review queue: one row per flagged charge still awaiting a decision. */
+.queue-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid var(--gridline);
+  /* A wash and left accent, so a flagged item never reads by color alone. */
+  background: var(--critical-wash);
+  box-shadow: inset 3px 0 0 var(--critical);
+}
+.queue-item:last-child {
+  border-bottom: none;
+}
+.queue-title {
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.queue-meta {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+.queue-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+.queue .empty {
+  color: var(--text-muted);
+  text-align: center;
+  padding: 2rem;
+}
+
+/* A reviewed item dims and shows who acted, then drops off the queue. */
+.queue-item.resolved {
+  opacity: 0.65;
+  background: transparent;
+  box-shadow: none;
+}
+.queue-outcome {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+.queue-item.acknowledge .queue-outcome {
+  color: var(--good);
+}
+.queue-item.escalate .queue-outcome {
+  color: var(--critical);
+}
+
+.btn {
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  padding: 0.375rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+.btn:hover:not(:disabled) {
+  border-color: var(--text-muted);
+}
+.btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.btn-escalate {
+  color: var(--critical);
+  border-color: var(--critical);
 }
 
 table {
@@ -186,6 +330,7 @@ tr.flagged td:first-child {
     background: var(--gridline);
   }
 }
-tr.new td {
+tr.new td,
+.queue-item.new {
   animation: flash 0.6s ease-out;
 }

@@ -1,13 +1,11 @@
-const rowsEl = document.getElementById("rows");
+const queueEl = document.getElementById("queue");
+const feedRowsEl = document.getElementById("rows");
+const viewerEl = document.getElementById("viewer");
 const statusEl = document.getElementById("status");
 const statusTextEl = document.getElementById("status-text");
 
-const MAX_ROWS = 50; // Keep the table short; older rows drop off the bottom.
-
-// Running totals, accumulated on the client from the stream.
-let count = 0;
-let flagged = 0;
-let volume = 0;
+const MAX_ROWS = 50; // Keep the live feed short; older rows drop off the bottom.
+const RESOLVED_LINGER_MS = 5000; // How long a reviewed item stays, so its outcome is seen.
 
 const money = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -25,16 +23,16 @@ function setStatus(state, text) {
   statusTextEl.textContent = text;
 }
 
-function updateTotals() {
-  document.getElementById("stat-volume").textContent = compactMoney.format(volume);
-  document.getElementById("stat-count").textContent = count.toLocaleString();
+// The server is the source of truth for the totals; the tiles just render what it sends.
+function renderStats(stats) {
+  document.getElementById("stat-volume").textContent = compactMoney.format(stats.volume);
+  document.getElementById("stat-count").textContent = stats.count.toLocaleString();
 
-  const flaggedEl = document.getElementById("stat-flagged");
-  flaggedEl.textContent = flagged.toLocaleString();
-  flaggedEl.classList.toggle("alert", flagged > 0);
+  const pendingEl = document.getElementById("stat-pending");
+  pendingEl.textContent = stats.pending.toLocaleString();
+  pendingEl.classList.toggle("alert", stats.pending > 0);
 
-  const rate = count ? (flagged / count) * 100 : 0;
-  document.getElementById("stat-rate").textContent = `${rate.toFixed(1)}%`;
+  document.getElementById("stat-escalated").textContent = stats.escalated.toLocaleString();
 }
 
 function cell(text, className) {
@@ -51,22 +49,95 @@ function statusCell(tx) {
   // Icon plus label, so the status is never signaled by color alone.
   pill.textContent = tx.status === "flagged" ? "⚠ Flagged" : "✓ Approved";
   td.appendChild(pill);
-  if (tx.flagReason) {
-    const reason = document.createElement("span");
-    reason.className = "flag-reason";
-    reason.textContent = ` — ${tx.flagReason}`;
-    td.appendChild(reason);
-  }
   return td;
 }
 
-function addTransaction(tx) {
-  count += 1;
-  volume += tx.amount;
-  if (tx.status === "flagged") flagged += 1;
-  updateTotals();
+// --- Review queue: the shared, collaborative part ---
 
-  const placeholder = rowsEl.querySelector(".empty");
+async function review(id, action, buttons) {
+  // Disable both buttons immediately so a double-click can't send the action twice.
+  buttons.forEach((b) => (b.disabled = true));
+  try {
+    const res = await fetch("review", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, action }),
+    });
+    // 409 means another analyst got there first; the "review" event will resolve the row.
+    if (!res.ok && res.status !== 409) throw new Error(`review failed: ${res.status}`);
+  } catch (err) {
+    console.error(err);
+    buttons.forEach((b) => (b.disabled = false));
+  }
+}
+
+function addQueueItem(tx) {
+  const placeholder = queueEl.querySelector(".empty");
+  if (placeholder) placeholder.remove();
+
+  const row = document.createElement("div");
+  row.className = "queue-item new";
+  row.dataset.id = tx.id;
+
+  const info = document.createElement("div");
+  info.className = "queue-info";
+  const title = document.createElement("div");
+  title.className = "queue-title";
+  title.textContent = `${money.format(tx.amount)} · ${tx.merchant}`;
+  const meta = document.createElement("div");
+  meta.className = "queue-meta";
+  meta.textContent = `${tx.city}, ${tx.country} · card ••${tx.cardLast4} · ${tx.flagReason}`;
+  info.append(title, meta);
+
+  const actions = document.createElement("div");
+  actions.className = "queue-actions";
+  const ack = document.createElement("button");
+  ack.className = "btn btn-ack";
+  ack.textContent = "Acknowledge";
+  const esc = document.createElement("button");
+  esc.className = "btn btn-escalate";
+  esc.textContent = "Escalate";
+  const buttons = [ack, esc];
+  ack.addEventListener("click", () => review(tx.id, "acknowledge", buttons));
+  esc.addEventListener("click", () => review(tx.id, "escalate", buttons));
+  actions.append(ack, esc);
+
+  row.append(info, actions);
+  queueEl.prepend(row);
+}
+
+function resolveQueueItem(id, action, by) {
+  const row = queueEl.querySelector(`.queue-item[data-id="${id}"]`);
+  if (!row) return; // Already gone from this browser.
+
+  row.classList.add("resolved", action);
+  const actions = row.querySelector(".queue-actions");
+  const outcome = document.createElement("div");
+  outcome.className = "queue-outcome";
+  // Show who did it, so the attribution from the viewer's Connect identity is visible.
+  outcome.textContent =
+    action === "escalate" ? `⚠ Escalated by ${by}` : `✓ Acknowledged by ${by}`;
+  actions.replaceWith(outcome);
+
+  // Let everyone read the outcome for a moment, then drop it from the queue.
+  setTimeout(() => {
+    row.remove();
+    if (!queueEl.querySelector(".queue-item")) showQueueEmpty();
+  }, RESOLVED_LINGER_MS);
+}
+
+function showQueueEmpty() {
+  if (queueEl.querySelector(".empty")) return;
+  const empty = document.createElement("div");
+  empty.className = "empty";
+  empty.textContent = "Nothing awaiting review.";
+  queueEl.append(empty);
+}
+
+// --- Live feed: the raw stream of every transaction ---
+
+function addFeedRow(tx) {
+  const placeholder = feedRowsEl.querySelector(".empty");
   if (placeholder) placeholder.remove();
 
   const tr = document.createElement("tr");
@@ -80,16 +151,52 @@ function addTransaction(tx) {
     cell(money.format(tx.amount), "num"),
     statusCell(tx),
   );
-  rowsEl.prepend(tr);
+  feedRowsEl.prepend(tr);
 
-  while (rowsEl.children.length > MAX_ROWS) {
-    rowsEl.lastElementChild.remove();
+  while (feedRowsEl.children.length > MAX_ROWS) {
+    feedRowsEl.lastElementChild.remove();
   }
 }
+
+// --- Wire up the stream ---
 
 // Relative URL so the subscription works behind Connect's content path prefix.
 const source = new EventSource("events");
 source.onopen = () => setStatus("open", "Live");
-source.onmessage = (event) => addTransaction(JSON.parse(event.data));
 // EventSource reconnects on its own; reflect the dropped connection meanwhile.
 source.onerror = () => setStatus("closed", "Reconnecting…");
+
+source.addEventListener("snapshot", (event) => {
+  const { stats, queue } = JSON.parse(event.data);
+  renderStats(stats);
+  // Rebuild the queue from the shared state (oldest first, so unshift-order matches).
+  queueEl.replaceChildren();
+  queue.slice().reverse().forEach(addQueueItem);
+  if (queue.length === 0) showQueueEmpty();
+});
+
+source.addEventListener("transaction", (event) => {
+  const { tx, stats } = JSON.parse(event.data);
+  renderStats(stats);
+  addFeedRow(tx);
+  if (tx.status === "flagged") addQueueItem(tx);
+});
+
+source.addEventListener("review", (event) => {
+  const { id, action, by, stats } = JSON.parse(event.data);
+  renderStats(stats);
+  resolveQueueItem(id, action, by);
+});
+
+// Show the signed-in analyst's Connect identity in the header. When the app is on
+// Connect but the Visitor API Key integration is missing, prompt to add it instead.
+fetch("whoami")
+  .then((res) => res.json())
+  .then(({ name, status }) => {
+    if (status === "signed-in") {
+      viewerEl.textContent = `Signed in as ${name}`;
+    } else if (status === "unconfigured") {
+      document.getElementById("identity-notice").hidden = false;
+    }
+  })
+  .catch(() => {}); // Non-fatal: the header just stays blank.
