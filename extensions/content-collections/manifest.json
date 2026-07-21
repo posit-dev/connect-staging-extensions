@@ -8,7 +8,7 @@
     "description": "Create and edit curated collections of your Connect content, with no server changes. Pick the content you want (or a tag to resolve it dynamically), give the collection a title, description, intro, and theme, and publish it as its own Connect content item. Each collection renders per viewer, minting a viewer-scoped API key so every person sees only the items they're allowed to access.",
     "homepage": "https://github.com/posit-dev/connect-staging-extensions/tree/main/extensions/content-collections",
     "minimumConnectVersion": "2025.04.0",
-    "version": "0.0.0",
+    "version": "0.0.1",
     "category": "extension",
     "tags": [
       "r",
