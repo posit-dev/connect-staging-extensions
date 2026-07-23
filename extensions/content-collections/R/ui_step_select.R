@@ -20,14 +20,17 @@
 # Builds a "Type · Owner · M/D/YY H:MMam" meta line, dropping pieces that
 # aren't available so a row with just app_mode still renders cleanly.
 .row_meta <- function(item) {
+  type <- content_type_label(item$app_mode %||% "")
+  owner <- .owner_name(item)
+  dt_html <- .format_datetime(item$last_deployed_time)
+
   parts <- c(
-    if (nzchar(content_type_label(item$app_mode %||% "")))
-      content_type_label(item$app_mode %||% "") else NULL,
-    if (nzchar(.owner_name(item)))                    .owner_name(item) else NULL,
-    if (nzchar(.format_datetime(item$last_deployed_time)))
-      .format_datetime(item$last_deployed_time) else NULL
+    if (nzchar(type))  htmltools::htmlEscape(type)  else NULL,
+    if (nzchar(owner)) htmltools::htmlEscape(owner) else NULL,
+    if (nzchar(dt_html)) dt_html else NULL
   )
-  paste(parts, collapse = " · ")
+
+  htmltools::HTML(paste(parts, collapse = " · "))
 }
 
 .result_row <- function(item, is_selected, connect_server = "") {
