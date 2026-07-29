@@ -29,6 +29,51 @@
   ],
   "extensions": [
     {
+      "name": "content-collections",
+      "title": "Content Collection Configurator",
+      "description": "Create and edit curated collections of your Connect content, with no server changes. Pick the content you want (or a tag to resolve it dynamically), give the collection a title, description, intro, and theme, and publish it as its own Connect content item. Each collection renders per viewer, minting a viewer-scoped API key so every person sees only the items they're allowed to access.",
+      "homepage": "https://github.com/posit-dev/connect-staging-extensions/tree/main/extensions/content-collections",
+      "latestVersion": {
+        "version": "0.0.1",
+        "released": "2026-07-29T13:34:29Z",
+        "url": "https://github.com/posit-dev/connect-staging-extensions/releases/download/content-collections%40v0.0.1/content-collections.tar.gz",
+        "minimumConnectVersion": "2025.04.0",
+        "requiredFeatures": [
+          "API Publishing",
+          "OAuth Integrations",
+          "Current User Execution"
+        ],
+        "requiredEnvironment": {
+          "r": {
+            "requires": "~=4.4"
+          }
+        }
+      },
+      "versions": [
+        {
+          "version": "0.0.1",
+          "released": "2026-07-29T13:34:29Z",
+          "url": "https://github.com/posit-dev/connect-staging-extensions/releases/download/content-collections%40v0.0.1/content-collections.tar.gz",
+          "minimumConnectVersion": "2025.04.0",
+          "requiredFeatures": [
+            "API Publishing",
+            "OAuth Integrations",
+            "Current User Execution"
+          ],
+          "requiredEnvironment": {
+            "r": {
+              "requires": "~=4.4"
+            }
+          }
+        }
+      ],
+      "tags": [
+        "r",
+        "shiny"
+      ],
+      "category": "extension"
+    },
+    {
       "name": "hello-world-nodejs",
       "title": "Node.js: Hello World",
       "description": "A minimal Node.js HTTP server that returns a JSON greeting. A starting point for any Node.js service on Connect.",
