@@ -116,6 +116,13 @@ h1 {
   font-size: 1.125rem;
   margin: 0 0 0.5rem;
 }
+.notice ol {
+  margin: 0.5rem 0;
+  padding-left: 1.25rem;
+}
+.notice li {
+  margin: 0.25rem 0;
+}
 
 /* Collapsed by default so the dashboard stays clean; expands on click via the
    native <details> element, no script needed. */

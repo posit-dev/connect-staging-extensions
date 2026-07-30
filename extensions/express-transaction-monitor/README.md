@@ -80,10 +80,12 @@ content settings make it work well:
   and totals are shared in one process's memory, so more than one process would give
   different viewers different state. Setting Min processes to 1 as well keeps the feed
   running between visits.
-- In the content settings, on the "Access" tab, add the "Connect Visitor API Key"
-  integration under "Integrations" to show viewer names on review actions. Without it,
-  the app still runs and attributes actions to "Anonymous analyst". For more
-  information, see the
+- Add the "Connect Visitor API Key" integration to show viewer names on review
+  actions. Open this content's settings, go to the "Runtime" tab, and under
+  "Integrations" select "Add Integration" and choose a "Connect Visitor API Key"
+  integration (or create one if none exists yet). Without it, the app still runs and
+  attributes actions to "Anonymous analyst"; the app itself walks through this same
+  setup on a dedicated screen until it's configured. For more information, see the
   [OAuth Integrations documentation](https://docs.posit.co/connect/user/oauth-integrations/).
 
 To run a customized version, get the

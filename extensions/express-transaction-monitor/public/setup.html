@@ -17,17 +17,25 @@
         <h2>Setup required</h2>
         <p>
           This app couldn't resolve your Connect identity, so review actions would be
-          attributed to "Anonymous analyst" instead of you. In the content settings, on
-          the "Access" tab, add the "Connect Visitor API Key" integration under
-          "Integrations". For more information, see the
+          attributed to "Anonymous analyst" instead of you. To fix it:
+        </p>
+        <ol>
+          <li>Open this content's settings (the gear icon on its page in Connect).</li>
+          <li>Go to the "Runtime" tab.</li>
+          <li>
+            Under "Integrations", select "Add Integration" and choose a "Connect
+            Visitor API Key" integration (or create one if none exists yet).
+          </li>
+        </ol>
+        <p>
+          For more information, see the
           <a
             href="https://docs.posit.co/connect/user/oauth-integrations/"
             target="_blank"
             rel="noopener"
             >OAuth Integrations documentation</a
-          >.
+          >. Refresh this page once the integration is added.
         </p>
-        <p>Refresh this page once the integration is added.</p>
       </div>
     </main>
   </body>
