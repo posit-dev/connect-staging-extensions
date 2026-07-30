@@ -41,6 +41,11 @@
             labeled with the reviewer's <strong>Connect identity</strong>, which the
             server looks up from the signed-in viewer.
           </p>
+          <p>
+            The feed, review queue, and totals live in memory in a single process, so
+            this deployment needs <strong>Max processes set to 1</strong> (content
+            settings, Runtime) for every viewer to see the same state.
+          </p>
         </div>
       </details>
 
