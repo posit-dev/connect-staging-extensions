@@ -10,11 +10,11 @@ sees the results in real time.
 
 The example shows three things a Node.js app can do on Connect:
 
-- **Stream server data to the browser** as it happens, with no polling and no page
+- Stream server data to the browser as it happens, with no polling and no page
   refresh.
-- **Share state across every viewer**, so all of them see the same feed, the same
+- Share state across every viewer, so all of them see the same feed, the same
   review queue, and the same running totals.
-- **Use the viewer's Connect identity**, so each review action is attributed to the
+- Use the viewer's Connect identity, so each review action is attributed to the
   real signed-in person.
 
 The feed is simulated (about one transaction per second) and the fraud rules are a few
@@ -23,7 +23,7 @@ service to configure.
 
 ## How it works
 
-- **`index.js`** is the Express entrypoint. It serves the dashboard from `public/` and
+- `index.js` is the Express entrypoint. It serves the dashboard from `public/` and
   exposes three routes:
   - `GET /events` holds the connection open and pushes each new transaction as an SSE
     message. When a browser connects, the server first sends a snapshot of the current
@@ -36,31 +36,31 @@ service to configure.
   - `GET /whoami` returns the signed-in viewer's name for the header.
 
   The feed, the review queue, and the totals live in memory in a single process, so
-  every viewer shares the same state (see **Deploy it**).
-- **Viewer identity.** To attribute a review action, the server reads the
+  every viewer shares the same state (see Deploy it).
+- Viewer identity: to attribute a review action, the server reads the
   `Posit-Connect-User-Session-Token` header that Connect adds to each request,
   exchanges it for a short-lived key scoped to that viewer, and asks Connect who they
   are. Off Connect, or without the Visitor API Key integration, it falls back to
   "Anonymous analyst" so the app still runs everywhere.
-- **`public/`** is the browser side, plain HTML, CSS, and JavaScript with no build step.
+- `public/` is the browser side, plain HTML, CSS, and JavaScript with no build step.
   `app.js` opens an `EventSource`, renders the review queue and the live feed, and posts
   review actions back to the server. All URLs are relative so the app works under the
   content path Connect serves it from.
-- **`package.json`** declares `engines.node` (`>=22`), which Connect reads at deploy
+- `package.json` declares `engines.node` (`>=22`), which Connect reads at deploy
   time to pick a matching Node.js version. `package-lock.json` pins the one dependency,
   Express, to the version this was tested with.
 
 ## Customize it
 
-- **Use your own data.** Replace `makeTransaction()` in `index.js` with a read from your
+- Use your own data: replace `makeTransaction()` in `index.js` with a read from your
   real source: a message queue, a database change feed, or a webhook. Keep broadcasting
   each item the same way and the dashboard needs no changes.
-- **Change the rules.** The fraud checks in `index.js` are intentionally simple. Swap
+- Change the rules: the fraud checks in `index.js` are intentionally simple. Swap
   them for your own logic, or for the output of a model.
-- **Change the workflow.** The review actions are acknowledge and escalate. Swap them
+- Change the workflow: the review actions are acknowledge and escalate. Swap them
   for your own, and write each decision to a database instead of in-memory state if you
   need it to persist.
-- **Restyle the dashboard.** Edit `public/` to change the columns, the tiles, or the
+- Restyle the dashboard: edit `public/` to change the columns, the tiles, or the
   look. The colors and layout use accessible defaults that adapt to light and dark.
 
 ## Deploy it
@@ -68,11 +68,11 @@ service to configure.
 Deploy it straight from the Connect Gallery to get a copy running and try it as-is. Two
 content settings make it work well:
 
-- **Set Max processes to 1** (content settings, **Runtime**). The feed, review queue,
+- Set Max processes to 1 (content settings, Runtime). The feed, review queue,
   and totals are shared in one process's memory, so more than one process would give
   different viewers different state. Setting Min processes to 1 as well keeps the feed
   running between visits.
-- **Add the Connect Visitor API Key integration** (content settings, **Access**) to
+- Add the Connect Visitor API Key integration (content settings, Access) to
   show viewer names on review actions. Without it the app still runs and attributes
   actions to "Anonymous analyst".
 
