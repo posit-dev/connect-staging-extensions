@@ -25,7 +25,7 @@
   },
   "files": {
     "index.js": {
-      "checksum": "66b47aedf6187b4c024bd931ad021c60"
+      "checksum": "944ba5b4e2db09fa0d8efbc371f3b713"
     },
     "package.json": {
       "checksum": "8410a82e3d027dc1d6283b65072741cc"
@@ -34,13 +34,16 @@
       "checksum": "374c19ed1a814a23ab605fb6167214b5"
     },
     "public/index.html": {
-      "checksum": "b174c963cb5ad080e4132240441b10e4"
+      "checksum": "c35892a00986f86b5558303114bd223e"
     },
     "public/styles.css": {
-      "checksum": "ad4fa0bac12c8a2dd60fee3447234a2a"
+      "checksum": "af52fe7ec7c42262b775bae7378265d1"
     },
     "public/app.js": {
-      "checksum": "845c7636990bfead26da59e7e82c1d02"
+      "checksum": "f6b68716eafb44748cd5f04ee796e862"
+    },
+    "public/setup.html": {
+      "checksum": "4a1fa790de2f49092b8f71933d3c8a65"
     }
   }
 }

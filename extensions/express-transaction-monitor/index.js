@@ -81,9 +81,11 @@ function makeTransaction() {
 // deploy the content with Max processes set to 1 (see the README).
 const clients = new Set(); // connected browsers, for broadcasting
 const reviewQueue = []; // flagged transactions still awaiting review
+const escalatedLog = []; // confirmed-fraud transactions, kept for follow-up
 const totals = { count: 0, volume: 0, flagged: 0, escalated: 0 };
 
 const MAX_QUEUE = 50; // cap the pending queue so an unwatched feed can't grow forever
+const MAX_ESCALATED = 50; // cap the escalated log the same way
 
 // The pending count is just the queue length; bundle it with the totals the tiles show.
 function stats() {
@@ -160,6 +162,17 @@ async function resolveViewer(req) {
   }
 }
 
+// Serve a setup screen instead of the dashboard when the Visitor API Key
+// integration isn't configured, so a misconfigured deployment can't be used
+// (and silently attribute every review to "Anonymous analyst") before it's fixed.
+app.get("/", async (req, res, next) => {
+  const { status } = await resolveViewer(req);
+  if (status === "unconfigured") {
+    return res.sendFile(path.join(__dirname, "public", "setup.html"));
+  }
+  next();
+});
+
 app.use(express.static(path.join(__dirname, "public")));
 
 // Who is viewing, shown in the header (with a setup prompt when identity is off).
@@ -182,7 +195,7 @@ app.get("/events", (req, res) => {
   // Seed the new browser with the shared state, so an analyst who joins late sees the
   // current totals and everything still awaiting review, not just what happens next.
   res.write(
-    `event: snapshot\ndata: ${JSON.stringify({ stats: stats(), queue: reviewQueue })}\n\n`,
+    `event: snapshot\ndata: ${JSON.stringify({ stats: stats(), queue: reviewQueue, escalated: escalatedLog })}\n\n`,
   );
 
   // Comment lines act as heartbeats that keep idle proxies from closing the stream.
@@ -206,12 +219,21 @@ app.post("/review", async (req, res) => {
     // Another analyst already reviewed it, or it aged off the queue.
     return res.status(409).json({ error: "Already reviewed" });
   }
-  reviewQueue.splice(idx, 1);
-  if (action === "escalate") totals.escalated += 1;
+  const [tx] = reviewQueue.splice(idx, 1);
 
   const { name: by } = await resolveViewer(req);
+  const at = new Date().toISOString();
+
+  if (action === "escalate") {
+    totals.escalated += 1;
+    // Escalating should leave a durable trail to follow up on, not just tick a
+    // counter, so keep the transaction (not just its id) in a standing log.
+    escalatedLog.unshift({ ...tx, reviewedBy: by, reviewedAt: at });
+    while (escalatedLog.length > MAX_ESCALATED) escalatedLog.pop();
+  }
+
   // Tell every browser who reviewed it, so the shared queue updates live for everyone.
-  broadcast("review", { id, action, by, at: new Date().toISOString(), stats: stats() });
+  broadcast("review", { id, action, by, at, tx, stats: stats() });
   res.json({ ok: true });
 });
 

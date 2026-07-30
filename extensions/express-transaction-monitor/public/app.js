@@ -1,10 +1,12 @@
 const queueEl = document.getElementById("queue");
+const escalatedEl = document.getElementById("escalated");
 const feedRowsEl = document.getElementById("rows");
 const viewerEl = document.getElementById("viewer");
 const statusEl = document.getElementById("status");
 const statusTextEl = document.getElementById("status-text");
 
 const MAX_ROWS = 50; // Keep the live feed short; older rows drop off the bottom.
+const MAX_ESCALATED_ROWS = 50; // Matches the server's escalatedLog cap.
 const RESOLVED_LINGER_MS = 5000; // How long a reviewed item stays, so its outcome is seen.
 
 const money = new Intl.NumberFormat("en-US", {
@@ -134,6 +136,45 @@ function showQueueEmpty() {
   queueEl.append(empty);
 }
 
+// --- Escalated log: a durable record of confirmed fraud, for follow-up ---
+
+function addEscalatedItem(tx) {
+  const placeholder = escalatedEl.querySelector(".empty");
+  if (placeholder) placeholder.remove();
+
+  const row = document.createElement("div");
+  row.className = "escalated-item new";
+
+  const info = document.createElement("div");
+  info.className = "queue-info";
+  const title = document.createElement("div");
+  title.className = "queue-title";
+  title.textContent = `${money.format(tx.amount)} · ${tx.merchant}`;
+  const meta = document.createElement("div");
+  meta.className = "escalated-meta";
+  meta.textContent = `${tx.city}, ${tx.country} · card ••${tx.cardLast4} · ${tx.flagReason}`;
+  info.append(title, meta);
+
+  const by = document.createElement("div");
+  by.className = "escalated-by";
+  by.textContent = `Escalated by ${tx.reviewedBy} · ${new Date(tx.reviewedAt).toLocaleTimeString()}`;
+
+  row.append(info, by);
+  escalatedEl.prepend(row);
+
+  while (escalatedEl.children.length > MAX_ESCALATED_ROWS) {
+    escalatedEl.lastElementChild.remove();
+  }
+}
+
+function showEscalatedEmpty() {
+  if (escalatedEl.querySelector(".empty")) return;
+  const empty = document.createElement("div");
+  empty.className = "empty";
+  empty.textContent = "No escalations yet.";
+  escalatedEl.append(empty);
+}
+
 // --- Live feed: the raw stream of every transaction ---
 
 function addFeedRow(tx) {
@@ -167,12 +208,16 @@ source.onopen = () => setStatus("open", "Live");
 source.onerror = () => setStatus("closed", "Reconnecting…");
 
 source.addEventListener("snapshot", (event) => {
-  const { stats, queue } = JSON.parse(event.data);
+  const { stats, queue, escalated } = JSON.parse(event.data);
   renderStats(stats);
   // Rebuild the queue from the shared state (oldest first, so unshift-order matches).
   queueEl.replaceChildren();
   queue.slice().reverse().forEach(addQueueItem);
   if (queue.length === 0) showQueueEmpty();
+
+  escalatedEl.replaceChildren();
+  escalated.slice().reverse().forEach(addEscalatedItem);
+  if (escalated.length === 0) showEscalatedEmpty();
 });
 
 source.addEventListener("transaction", (event) => {
@@ -183,20 +228,20 @@ source.addEventListener("transaction", (event) => {
 });
 
 source.addEventListener("review", (event) => {
-  const { id, action, by, stats } = JSON.parse(event.data);
+  const { id, action, by, at, tx, stats } = JSON.parse(event.data);
   renderStats(stats);
   resolveQueueItem(id, action, by);
+  if (action === "escalate") {
+    addEscalatedItem({ ...tx, reviewedBy: by, reviewedAt: at });
+  }
 });
 
-// Show the signed-in analyst's Connect identity in the header. When the app is on
-// Connect but the Visitor API Key integration is missing, prompt to add it instead.
+// Show the signed-in analyst's Connect identity in the header. A missing Visitor API
+// Key integration is handled server-side, by serving the setup screen instead of this
+// page, so the only real case left here is the signed-in name.
 fetch("whoami")
   .then((res) => res.json())
   .then(({ name, status }) => {
-    if (status === "signed-in") {
-      viewerEl.textContent = `Signed in as ${name}`;
-    } else if (status === "unconfigured") {
-      document.getElementById("identity-notice").hidden = false;
-    }
+    if (status === "signed-in") viewerEl.textContent = `Signed in as ${name}`;
   })
   .catch(() => {}); // Non-fatal: the header just stays blank.

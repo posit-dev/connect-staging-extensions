@@ -24,24 +24,31 @@ service to configure.
 ## How it works
 
 - `index.js` is the Express entrypoint. It serves the dashboard from `public/` and
-  exposes three routes:
+  exposes four routes:
+  - `GET /` serves the setup screen (`public/setup.html`) instead of the dashboard
+    when the Visitor API Key integration isn't configured, so the app can't be used
+    (and silently attribute every review to "Anonymous analyst") before it's fixed.
   - `GET /events` holds the connection open and pushes each new transaction as an SSE
     message. When a browser connects, the server first sends a snapshot of the current
-    totals and review queue, so someone who joins late sees the shared state instead of
-    only what happens next. The response sets `Cache-Control: no-cache` and
-    `X-Accel-Buffering: no` so proxies (including Connect's) forward each event
-    immediately, and it sends heartbeat comments to keep idle connections alive.
+    totals, review queue, and escalated log, so someone who joins late sees the shared
+    state instead of only what happens next. The response sets `Cache-Control:
+    no-cache` and `X-Accel-Buffering: no` so proxies (including Connect's) forward
+    each event immediately, and it sends heartbeat comments to keep idle connections
+    alive.
   - `POST /review` records that an analyst acknowledged or escalated a flagged
-    transaction, then broadcasts the result to every connected browser.
+    transaction, then broadcasts the result to every connected browser. Escalating
+    also moves the transaction into a standing escalated log, so it stays visible for
+    follow-up instead of just incrementing a counter.
   - `GET /whoami` returns the signed-in viewer's name for the header.
 
-  The feed, the review queue, and the totals live in memory in a single process, so
-  every viewer shares the same state (see Deploy it).
+  The feed, the review queue, the escalated log, and the totals live in memory in a
+  single process, so every viewer shares the same state (see Deploy it).
 - Viewer identity: to attribute a review action, the server reads the
   `Posit-Connect-User-Session-Token` header that Connect adds to each request,
   exchanges it for a short-lived key scoped to that viewer, and asks Connect who they
-  are. Off Connect, or without the Visitor API Key integration, it falls back to
-  "Anonymous analyst" so the app still runs everywhere.
+  are. Off Connect, it falls back to "Anonymous analyst" so the app still runs
+  locally; on Connect without the Visitor API Key integration, it serves the setup
+  screen instead (see `GET /` above).
 - `public/` is the browser side, plain HTML, CSS, and JavaScript with no build step.
   `app.js` opens an `EventSource`, renders the review queue and the live feed, and posts
   review actions back to the server. All URLs are relative so the app works under the
@@ -57,9 +64,10 @@ service to configure.
   each item the same way and the dashboard needs no changes.
 - Change the rules: the fraud checks in `index.js` are intentionally simple. Swap
   them for your own logic, or for the output of a model.
-- Change the workflow: the review actions are acknowledge and escalate. Swap them
-  for your own, and write each decision to a database instead of in-memory state if you
-  need it to persist.
+- Change the workflow: the review actions are acknowledge and escalate, and escalating
+  keeps the transaction in a standing log for follow-up. Swap the actions for your own,
+  and write the log to a database instead of in-memory state if you need it to survive
+  a restart.
 - Restyle the dashboard: edit `public/` to change the columns, the tiles, or the
   look. The colors and layout use accessible defaults that adapt to light and dark.
 

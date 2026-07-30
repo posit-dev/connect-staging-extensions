@@ -39,7 +39,9 @@
             viewing the app can acknowledge or escalate a charge, and everyone sees
             the result live over <strong>Server-Sent Events</strong>. Each action is
             labeled with the reviewer's <strong>Connect identity</strong>, which the
-            server looks up from the signed-in viewer.
+            server looks up from the signed-in viewer. Escalated charges stay in a
+            standing <strong>Escalated</strong> log below for follow-up, instead of
+            disappearing once reviewed.
           </p>
         </div>
       </details>
@@ -49,20 +51,6 @@
         content settings, on the "Runtime" tab, set <strong>Max processes</strong> to 1
         (and <strong>Min processes</strong> to 1 to keep the feed running between
         visits), so every viewer sees the same state.
-      </p>
-
-      <!-- Shown only when running on Connect without the Visitor API Key integration. -->
-      <p class="notice" id="identity-notice" hidden>
-        "Connect Visitor API Key" integration required to show reviewer names. In the
-        content settings, on the "Access" tab, add the "Connect Visitor API Key"
-        integration under "Integrations". Without it, review actions are recorded as
-        "Anonymous analyst". For more information, see the
-        <a
-          href="https://docs.posit.co/connect/user/oauth-integrations/"
-          target="_blank"
-          rel="noopener"
-          >OAuth Integrations documentation</a
-        >.
       </p>
 
       <section class="tiles" aria-label="Running totals">
@@ -91,6 +79,16 @@
         </div>
         <div class="queue" id="queue">
           <div class="empty">Waiting for flagged transactions…</div>
+        </div>
+      </section>
+
+      <section class="panel" aria-label="Escalated transactions">
+        <div class="panel-head">
+          <h2>Escalated</h2>
+          <p>Charges the team has confirmed as fraud, kept here for follow-up.</p>
+        </div>
+        <div class="escalated" id="escalated">
+          <div class="empty">No escalations yet.</div>
         </div>
       </section>
 

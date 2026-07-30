@@ -112,6 +112,10 @@ h1 {
 .notice a {
   color: inherit;
 }
+.notice h2 {
+  font-size: 1.125rem;
+  margin: 0 0 0.5rem;
+}
 
 /* Collapsed by default so the dashboard stays clean; expands on click via the
    native <details> element, no script needed. */
@@ -244,6 +248,36 @@ h1 {
 }
 .queue-item.escalate .queue-outcome {
   color: var(--critical);
+}
+
+/* Escalated log: a standing record of confirmed fraud, so it stays visible for
+   follow-up instead of fading away like an acknowledged charge. */
+.escalated-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid var(--gridline);
+  box-shadow: inset 3px 0 0 var(--critical);
+}
+.escalated-item:last-child {
+  border-bottom: none;
+}
+.escalated-meta {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+.escalated-by {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+  text-align: right;
+}
+.escalated .empty {
+  color: var(--text-muted);
+  text-align: center;
+  padding: 2rem;
 }
 
 .btn {
