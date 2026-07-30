@@ -72,9 +72,11 @@ content settings make it work well:
   and totals are shared in one process's memory, so more than one process would give
   different viewers different state. Setting Min processes to 1 as well keeps the feed
   running between visits.
-- Add the Connect Visitor API Key integration (content settings, Access) to
-  show viewer names on review actions. Without it the app still runs and attributes
-  actions to "Anonymous analyst".
+- In the content settings, on the "Access" tab, add the "Connect Visitor API Key"
+  integration under "Integrations" to show viewer names on review actions. Without it,
+  the app still runs and attributes actions to "Anonymous analyst". For more
+  information, see the
+  [OAuth Integrations documentation](https://docs.posit.co/connect/user/oauth-integrations/).
 
 To run a customized version, get the
 [example source](https://github.com/posit-dev/connect-staging-extensions/tree/main/extensions/express-transaction-monitor),

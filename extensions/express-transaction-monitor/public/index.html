@@ -41,24 +41,28 @@
             labeled with the reviewer's <strong>Connect identity</strong>, which the
             server looks up from the signed-in viewer.
           </p>
-          <p>
-            The feed, review queue, and totals live in memory in a single process, so
-            this deployment needs <strong>Max processes set to 1</strong> (content
-            settings, Runtime) for every viewer to see the same state.
-          </p>
         </div>
       </details>
 
+      <p class="notice">
+        The feed, review queue, and totals live in memory in a single process. In the
+        content settings, on the "Runtime" tab, set <strong>Max processes</strong> to 1
+        (and <strong>Min processes</strong> to 1 to keep the feed running between
+        visits), so every viewer sees the same state.
+      </p>
+
       <!-- Shown only when running on Connect without the Visitor API Key integration. -->
       <p class="notice" id="identity-notice" hidden>
-        Review actions are recorded as "Anonymous analyst." Add the
+        "Connect Visitor API Key" integration required to show reviewer names. In the
+        content settings, on the "Access" tab, add the "Connect Visitor API Key"
+        integration under "Integrations". Without it, review actions are recorded as
+        "Anonymous analyst". For more information, see the
         <a
           href="https://docs.posit.co/connect/user/oauth-integrations/"
           target="_blank"
           rel="noopener"
-          >Connect Visitor API Key integration</a
-        >
-        so each one shows the reviewer's name.
+          >OAuth Integrations documentation</a
+        >.
       </p>
 
       <section class="tiles" aria-label="Running totals">
