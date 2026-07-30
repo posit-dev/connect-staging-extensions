@@ -24,33 +24,34 @@
         <summary>About this demo</summary>
         <div class="about-body">
           <p>
-            This app is an example of running a Node.js app on Connect. It uses the
-            <strong>Express</strong> framework to serve a shared fraud-review
-            dashboard that updates live as new data arrives, with no page refresh.
+            This page shows a live feed of card transactions, updating on its own
+            without ever needing a refresh. About once a second, a new transaction
+            comes in, and a few get flagged as possibly fraudulent, for example
+            because the amount is unusually large or the charge came from an
+            unexpected country.
           </p>
           <p>
-            The data is <strong>simulated</strong>. The server creates about one card
-            transaction every second, so nothing you see is a real account or
-            payment. A few simple rules flag suspicious charges, such as large
-            amounts or charges from outside the US.
+            Everything here is made up. The transactions, merchants, and card numbers
+            are all simulated, so nothing you see is a real account or a real charge.
           </p>
           <p>
-            Flagged charges go to a shared <strong>review queue</strong>. Anyone
-            viewing the app can acknowledge or escalate a charge, and everyone sees
-            the result live over <strong>Server-Sent Events</strong>. Each action is
-            labeled with the reviewer's <strong>Connect identity</strong>, which the
-            server looks up from the signed-in viewer. Escalated charges stay in a
-            standing <strong>Escalated</strong> log below for follow-up, instead of
-            disappearing once reviewed.
+            Flagged charges show up below under "Needs review." Anyone looking at this
+            page can acknowledge one, meaning it looks fine, or escalate it, meaning
+            it looks like real fraud. Either way, everyone else sees the decision
+            right away, along with the name of whoever made it. Escalated charges then
+            move down to the "Escalated" list, where they stay so the team can follow
+            up on them later instead of them just disappearing.
           </p>
         </div>
       </details>
 
       <p class="notice">
-        The feed, review queue, and totals live in memory in a single process. In the
-        content settings, on the "Runtime" tab, set <strong>Max processes</strong> to 1
-        (and <strong>Min processes</strong> to 1 to keep the feed running between
-        visits), so every viewer sees the same state.
+        A note for whoever manages this deployment: this app keeps everything (the
+        feed, the review queue, the totals) in memory rather than a database, so it
+        only works correctly as a single running copy. In this content's settings, on
+        the "Runtime" tab, set Max processes to 1. It's also worth setting Min
+        processes to 1, so the app doesn't stop and lose its data when nobody's used it
+        for a while.
       </p>
 
       <section class="tiles" aria-label="Running totals">

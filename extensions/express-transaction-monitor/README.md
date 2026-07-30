@@ -76,17 +76,18 @@ service to configure.
 Deploy it straight from the Connect Gallery to get a copy running and try it as-is. Two
 content settings make it work well:
 
-- Set Max processes to 1 (content settings, Runtime). The feed, review queue,
-  and totals are shared in one process's memory, so more than one process would give
-  different viewers different state. Setting Min processes to 1 as well keeps the feed
-  running between visits.
-- Add the "Connect Visitor API Key" integration to show viewer names on review
-  actions. Open this content's settings, go to the "Runtime" tab, and under
-  "Integrations" select "Add Integration" and choose a "Connect Visitor API Key"
-  integration (or create one if none exists yet). Without it, the app still runs and
-  attributes actions to "Anonymous analyst"; the app itself walks through this same
-  setup on a dedicated screen until it's configured. For more information, see the
-  [OAuth Integrations documentation](https://docs.posit.co/connect/user/oauth-integrations/).
+- Set Max processes to 1, on the content's "Runtime" tab. The feed, review queue, and
+  totals all live in one process's memory, so running more than one process would show
+  different viewers different data. Setting Min processes to 1 too keeps the app
+  running (and its data intact) between visits.
+- Add the "Connect Visitor API Key" integration, so review actions show the real
+  viewer's name instead of "Anonymous analyst." On the content's "Runtime" tab, under
+  "Integrations," click "Add Integration" and choose "Connect Visitor API Key" (or
+  create one first, if none exist yet). If this isn't done, the app still runs, but
+  every reviewer is logged as "Anonymous analyst"; the app itself walks a viewer
+  through this same setup on a dedicated screen until it's configured. See the
+  [OAuth Integrations documentation](https://docs.posit.co/connect/user/oauth-integrations/)
+  for more detail.
 
 To run a customized version, get the
 [example source](https://github.com/posit-dev/connect-staging-extensions/tree/main/extensions/express-transaction-monitor),
