@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Real-Time Transaction Monitor</title>
+    <!-- Relative URL so it resolves behind Connect's content path prefix. -->
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app">
+      <header class="app-header">
+        <h1>Real-Time Transaction Monitor</h1>
+        <div class="app-header-meta">
+          <p class="viewer" id="viewer"></p>
+          <p class="status" id="status" data-state="connecting">
+            <span class="status-dot" aria-hidden="true"></span>
+            <span id="status-text">Connecting…</span>
+          </p>
+        </div>
+      </header>
+
+      <details class="about">
+        <summary>About this demo</summary>
+        <div class="about-body">
+          <p>
+            This page shows a live feed of card transactions, updating on its own
+            without ever needing a refresh. These are simulated transactions,
+            merchants, and card numbers, so nothing you see is a real account or a
+            real charge.
+          </p>
+          <p>
+            A new transaction comes in about once a second, and a few get flagged as
+            possibly fraudulent: the amount is unusually large, the charge came from
+            an unexpected country, or it's an electronics purchase from outside the
+            US.
+          </p>
+          <p>
+            Flagged charges show up below under "Needs review." Anyone looking at this
+            page can handle a flagged charge in one of two ways: you can acknowledge
+            it, meaning it looks fine, or you can escalate it, meaning it looks like
+            real fraud. Escalated charges move down to the "Escalated" list, so that
+            the team can follow up on fraudulent charges. When you handle a flagged
+            charge, it will say who handled the charge and what decision they made,
+            reflected for everyone who has the page open.
+          </p>
+        </div>
+      </details>
+
+      <p class="notice">
+        A note for whoever manages this app: you will want to configure the content's
+        settings such that, on the "Runtime" tab, the Max processes and Min processes
+        are both set to 1.
+      </p>
+
+      <section class="tiles" aria-label="Running totals">
+        <div class="tile">
+          <div class="tile-label">Total volume</div>
+          <div class="tile-value" id="stat-volume">$0</div>
+        </div>
+        <div class="tile">
+          <div class="tile-label">Transactions</div>
+          <div class="tile-value" id="stat-count">0</div>
+        </div>
+        <div class="tile">
+          <div class="tile-label">Awaiting review</div>
+          <div class="tile-value" id="stat-pending">0</div>
+        </div>
+        <div class="tile">
+          <div class="tile-label">Escalated</div>
+          <div class="tile-value" id="stat-escalated">0</div>
+        </div>
+      </section>
+
+      <section class="panel" aria-label="Review queue">
+        <div class="panel-head">
+          <h2>Needs review</h2>
+          <p>Acknowledge or escalate each flagged charge. Everyone sees the decision live.</p>
+        </div>
+        <div class="queue" id="queue">
+          <div class="empty">Waiting for flagged transactions…</div>
+        </div>
+      </section>
+
+      <section class="panel" aria-label="Escalated transactions">
+        <div class="panel-head">
+          <h2>Escalated</h2>
+          <p>Charges the team has confirmed as fraud, kept here for follow-up.</p>
+        </div>
+        <div class="escalated" id="escalated">
+          <div class="empty">No escalations yet.</div>
+        </div>
+      </section>
+
+      <section class="panel feed" aria-label="Live transaction feed">
+        <div class="panel-head">
+          <h2>Live feed</h2>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Time</th>
+              <th scope="col">Merchant</th>
+              <th scope="col">Category</th>
+              <th scope="col">Location</th>
+              <th scope="col" class="num">Amount</th>
+              <th scope="col">Status</th>
+            </tr>
+          </thead>
+          <tbody id="rows">
+            <tr class="empty">
+              <td colspan="6">Waiting for transactions…</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+    </main>
+
+    <!-- Relative URL, same reason as the stylesheet. -->
+    <script src="app.js"></script>
+  </body>
+</html>

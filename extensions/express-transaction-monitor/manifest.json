@@ -1,0 +1,52 @@
+{
+  "version": 1,
+  "locale": "en_US",
+  "metadata": {
+    "appmode": "nodejs",
+    "entrypoint": "index.js"
+  },
+  "node": {
+    "version": "24.16.0",
+    "package_manager": {
+      "name": "npm",
+      "version": "11.13.0",
+      "package_file": "package.json"
+    }
+  },
+  "extension": {
+    "name": "express-transaction-monitor",
+    "title": "Express: Real-Time Transaction Monitor",
+    "description": "Stream live data to the browser as it happens with an Express app using Server-Sent Events, and let a team act on it together. It monitors a simulated feed of bank card transactions, sends the suspicious ones to a shared review queue, and attributes each acknowledge or escalate to the signed-in viewer using their Connect identity. A starting point for any live, collaborative dashboard; point the stream at your own source, like a message queue, a database change feed, or a webhook.",
+    "homepage": "https://github.com/posit-dev/connect-staging-extensions/tree/main/extensions/express-transaction-monitor",
+    "category": "example",
+    "tags": ["nodejs", "javascript", "express"],
+    "minimumConnectVersion": "2026.06.0",
+    "version": "0.0.1"
+  },
+  "files": {
+    "index.js": {
+      "checksum": "e899a791bea24f1a7677b27d62377ae9"
+    },
+    "package.json": {
+      "checksum": "8410a82e3d027dc1d6283b65072741cc"
+    },
+    "package-lock.json": {
+      "checksum": "374c19ed1a814a23ab605fb6167214b5"
+    },
+    "public/index.html": {
+      "checksum": "327c92324091f7c5307531a19d397f14"
+    },
+    "public/styles.css": {
+      "checksum": "82c1d99d69a0e43c2243645930736427"
+    },
+    "public/app.js": {
+      "checksum": "f7bf86268540c7320cfce51afcad9b24"
+    },
+    "public/setup.html": {
+      "checksum": "529bb30a4f8c1a97c3b8e56f34c8e884"
+    },
+    "public/setup.js": {
+      "checksum": "057916714e84eea63aa91fe56136efe5"
+    }
+  }
+}

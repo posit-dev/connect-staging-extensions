@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Setup required · Real-Time Transaction Monitor</title>
+    <!-- Relative URL so it resolves behind Connect's content path prefix. -->
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app">
+      <header class="app-header">
+        <h1>Real-Time Transaction Monitor</h1>
+      </header>
+
+      <div class="notice">
+        <h2>Setup</h2>
+        <p>
+          This app needs a "Connect Visitor API Key" integration to attribute
+          activity to the signed-in visitor. In the content settings, on the
+          <strong>"Runtime"</strong> tab, add the "Connect Visitor API Key"
+          integration under <strong>"Integrations"</strong>.
+        </p>
+        <p>
+          For more information, see the
+          <a
+            href="https://docs.posit.co/connect/user/oauth-integrations/"
+            target="_blank"
+            rel="noopener"
+            >OAuth Integrations documentation</a
+          >.
+        </p>
+      </div>
+    </main>
+
+    <script src="setup.js"></script>
+  </body>
+</html>
