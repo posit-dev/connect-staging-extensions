@@ -25,33 +25,32 @@
         <div class="about-body">
           <p>
             This page shows a live feed of card transactions, updating on its own
-            without ever needing a refresh. About once a second, a new transaction
-            comes in, and a few get flagged as possibly fraudulent, for example
-            because the amount is unusually large or the charge came from an
-            unexpected country.
+            without ever needing a refresh. These are simulated transactions,
+            merchants, and card numbers, so nothing you see is a real account or a
+            real charge.
           </p>
           <p>
-            Everything here is made up. The transactions, merchants, and card numbers
-            are all simulated, so nothing you see is a real account or a real charge.
+            A new transaction comes in about once a second, and a few get flagged as
+            possibly fraudulent: the amount is unusually large, the charge came from
+            an unexpected country, or it's an electronics purchase from outside the
+            US.
           </p>
           <p>
             Flagged charges show up below under "Needs review." Anyone looking at this
-            page can acknowledge one, meaning it looks fine, or escalate it, meaning
-            it looks like real fraud. Either way, everyone else sees the decision
-            right away, along with the name of whoever made it. Escalated charges then
-            move down to the "Escalated" list, where they stay so the team can follow
-            up on them later instead of them just disappearing.
+            page can handle a flagged charge in one of two ways: you can acknowledge
+            it, meaning it looks fine, or you can escalate it, meaning it looks like
+            real fraud. Escalated charges move down to the "Escalated" list, so that
+            the team can follow up on fraudulent charges. When you handle a flagged
+            charge, it will say who handled the charge and what decision they made,
+            reflected for everyone who has the page open.
           </p>
         </div>
       </details>
 
       <p class="notice">
-        A note for whoever manages this deployment: this app keeps everything (the
-        feed, the review queue, the totals) in memory rather than a database, so it
-        only works correctly as a single running copy. In this content's settings, on
-        the "Runtime" tab, set Max processes to 1. It's also worth setting Min
-        processes to 1, so the app doesn't stop and lose its data when nobody's used it
-        for a while.
+        A note for whoever manages this app: you will want to configure the content's
+        settings such that, on the "Runtime" tab, the Max processes and Min processes
+        are both set to 1.
       </p>
 
       <section class="tiles" aria-label="Running totals">
