@@ -103,6 +103,7 @@ function broadcast(event, data) {
 const CONNECT_SERVER = process.env.CONNECT_SERVER;
 const CONNECT_API_KEY = process.env.CONNECT_API_KEY;
 const viewerNames = new Map(); // session token -> resolved name, cached per process
+const MAX_VIEWERS = 500; // cap the cache so a long-lived process can't grow forever
 
 // Resolve who is making a request from their Connect identity, so review actions are
 // attributed to the real signed-in analyst instead of something the browser claims.
@@ -140,7 +141,14 @@ async function resolveViewer(req) {
         signal: AbortSignal.timeout(3000),
       },
     );
-    if (!credRes.ok) throw new Error(`credential exchange failed: ${credRes.status}`);
+    if (!credRes.ok) {
+      // Connect rejecting the exchange (4xx) means there is no integration to
+      // exchange against, which is a setup problem. A 5xx is Connect having trouble,
+      // which is not.
+      const err = new Error(`credential exchange failed: ${credRes.status}`);
+      err.unconfigured = credRes.status < 500;
+      throw err;
+    }
     const { access_token } = await credRes.json();
 
     // Ask Connect who that key belongs to. Using the viewer's own key means Connect
@@ -157,19 +165,34 @@ async function resolveViewer(req) {
       me.username ||
       "Analyst";
     viewerNames.set(token, name);
+    // A Map iterates in insertion order, so the first key is the oldest entry.
+    while (viewerNames.size > MAX_VIEWERS) {
+      viewerNames.delete(viewerNames.keys().next().value);
+    }
     return { name, status: "signed-in" };
   } catch (err) {
-    // On Connect but the exchange failed, most often because the Visitor API Key
-    // integration is not configured. Report that so the browser can prompt for it.
+    // Only a rejected exchange means the integration is missing. A timeout or an
+    // unreachable Connect is a blip, so report it separately: prompting for setup
+    // that is already done would send the viewer off to fix nothing.
     console.error("Viewer identity lookup failed:", err.message);
-    return { name: "Anonymous analyst", status: "unconfigured" };
+    return {
+      name: "Anonymous analyst",
+      status: err.unconfigured ? "unconfigured" : "unavailable",
+    };
   }
 }
 
-// Serve a setup screen instead of the dashboard when the Visitor API Key
-// integration isn't configured, so a misconfigured deployment can't be used
-// (and silently attribute every review to "Anonymous analyst") before it's fixed.
-app.get("/", async (req, res, next) => {
+// What the setup screen itself needs: its own assets, and the endpoint it polls to
+// notice when setup is done.
+const SETUP_PATHS = new Set(["/setup.js", "/styles.css", "/whoami"]);
+
+// Serve a setup screen in place of the app when the Visitor API Key integration
+// isn't configured, so a misconfigured deployment can't be used (and silently
+// attribute every review to "Anonymous analyst") before it's fixed. This gates every
+// route, not just `/`: the dashboard is also reachable at /index.html, and /events
+// and /review are usable on their own.
+app.use(async (req, res, next) => {
+  if (SETUP_PATHS.has(req.path)) return next();
   const { status } = await resolveViewer(req);
   if (status === "unconfigured") {
     return res.sendFile(path.join(__dirname, "public", "setup.html"));

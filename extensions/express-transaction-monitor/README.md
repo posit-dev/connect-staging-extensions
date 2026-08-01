@@ -25,9 +25,11 @@ service to configure.
 
 - `index.js` is the Express entrypoint. It serves the dashboard from `public/` and
   exposes four routes:
-  - `GET /` serves the setup screen (`public/setup.html`) instead of the dashboard
+  - Every route serves the setup screen (`public/setup.html`) instead of the app
     when the Visitor API Key integration isn't configured, so the app can't be used
     (and silently attribute every review to "Anonymous analyst") before it's fixed.
+    The setup screen re-checks on its own and moves to the dashboard once the
+    integration is added, so nobody has to know to reload it.
   - `GET /events` holds the connection open and pushes each new transaction as an SSE
     message. When a browser connects, the server first sends a snapshot of the current
     totals, review queue, and escalated log, so someone who joins late sees the shared
@@ -48,7 +50,7 @@ service to configure.
   exchanges it for a short-lived key scoped to that viewer, and asks Connect who they
   are. Off Connect, it falls back to "Anonymous analyst" so the app still runs
   locally; on Connect without the Visitor API Key integration, it serves the setup
-  screen instead (see `GET /` above).
+  screen instead (see the routes above).
 - `public/` is the browser side, plain HTML, CSS, and JavaScript with no build step.
   `app.js` opens an `EventSource`, renders the review queue and the live feed, and posts
   review actions back to the server. All URLs are relative so the app works under the
@@ -81,11 +83,11 @@ content settings make it work well:
   different viewers different data. Setting Min processes to 1 too keeps the app
   running (and its data intact) between visits.
 - Add the "Connect Visitor API Key" integration, so review actions show the real
-  viewer's name instead of "Anonymous analyst." On the content's "Runtime" tab, under
+  viewer's name. On the content's "Runtime" tab, under
   "Integrations," click "Add Integration" and choose "Connect Visitor API Key" (or
-  create one first, if none exist yet). If this isn't done, the app still runs, but
-  every reviewer is logged as "Anonymous analyst"; the app itself walks a viewer
-  through this same setup on a dedicated screen until it's configured. See the
+  create one first, if none exist yet). Until this is done the app shows a setup
+  screen in place of the dashboard, walking a viewer through this same step; it
+  switches to the dashboard on its own once the integration is added. See the
   [OAuth Integrations documentation](https://docs.posit.co/connect/user/oauth-integrations/)
   for more detail.
 

@@ -7,11 +7,14 @@ const CHECK_INTERVAL_MS = 3000; // How often to re-check whether setup is done.
 const timer = setInterval(async () => {
   try {
     const { status } = await fetch("whoami").then((res) => res.json());
-    if (status !== "unconfigured") {
+    // Wait for a working identity specifically: "unavailable" means Connect is having
+    // trouble, which setup can't fix.
+    if (status === "signed-in") {
       clearInterval(timer);
-      // Reload this frame only. Reloading the whole window would close the Connect
-      // settings panel the viewer is using to add the integration.
-      location.reload();
+      // Go to the app rather than reload, because this screen is also reachable
+      // directly at /setup.html, where reloading would just show it again. Staying in
+      // this frame keeps the Connect settings panel the viewer is using open.
+      location.replace(".");
     }
   } catch {
     // Connect restarts the content when an integration is added, so ignore the

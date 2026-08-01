@@ -25,7 +25,7 @@
   },
   "files": {
     "index.js": {
-      "checksum": "ecfd639b51b751b917faef1eb8c2dba3"
+      "checksum": "e899a791bea24f1a7677b27d62377ae9"
     },
     "package.json": {
       "checksum": "8410a82e3d027dc1d6283b65072741cc"
@@ -40,13 +40,13 @@
       "checksum": "82c1d99d69a0e43c2243645930736427"
     },
     "public/app.js": {
-      "checksum": "f6b68716eafb44748cd5f04ee796e862"
+      "checksum": "f7bf86268540c7320cfce51afcad9b24"
     },
     "public/setup.html": {
       "checksum": "529bb30a4f8c1a97c3b8e56f34c8e884"
     },
     "public/setup.js": {
-      "checksum": "ff5456d28ea669c84ecf35966e229c0c"
+      "checksum": "057916714e84eea63aa91fe56136efe5"
     }
   }
 }

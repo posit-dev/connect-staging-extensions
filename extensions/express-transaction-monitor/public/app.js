@@ -7,6 +7,7 @@ const statusTextEl = document.getElementById("status-text");
 
 const MAX_ROWS = 50; // Keep the live feed short; older rows drop off the bottom.
 const MAX_ESCALATED_ROWS = 50; // Matches the server's escalatedLog cap.
+const MAX_QUEUE_ITEMS = 50; // Matches the server's reviewQueue cap.
 const RESOLVED_LINGER_MS = 5000; // How long a reviewed item stays, so its outcome is seen.
 
 const money = new Intl.NumberFormat("en-US", {
@@ -106,6 +107,13 @@ function addQueueItem(tx) {
 
   row.append(info, actions);
   queueEl.prepend(row);
+
+  // The server drops the oldest flagged item past its own cap without announcing it,
+  // so trim to match. Otherwise the queue keeps rows the server has forgotten, and
+  // acting on one comes back as "Already reviewed".
+  while (queueEl.children.length > MAX_QUEUE_ITEMS) {
+    queueEl.lastElementChild.remove();
+  }
 }
 
 function resolveQueueItem(id, action, by) {
