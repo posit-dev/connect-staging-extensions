@@ -43,7 +43,10 @@
       "checksum": "f6b68716eafb44748cd5f04ee796e862"
     },
     "public/setup.html": {
-      "checksum": "21c7494c960c23e2156cc83d7dff2e99"
+      "checksum": "cc5a522f998cfbac10ed25f103ff4246"
+    },
+    "public/setup.js": {
+      "checksum": "ff5456d28ea669c84ecf35966e229c0c"
     }
   }
 }
