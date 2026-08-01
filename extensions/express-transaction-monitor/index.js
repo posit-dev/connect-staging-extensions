@@ -121,6 +121,8 @@ async function resolveViewer(req) {
   try {
     const base = CONNECT_SERVER.replace(/\/$/, "");
     // Exchange the viewer's session token for a short-lived key scoped to them.
+    // A slow or unreachable Connect API shouldn't hang the page load, so bound
+    // each call: an unconfigured integration should fail fast, not stall.
     const credRes = await fetch(
       `${base}/__api__/v1/oauth/integrations/credentials`,
       {
@@ -135,6 +137,7 @@ async function resolveViewer(req) {
           subject_token: token,
           requested_token_type: "urn:posit:connect:api-key",
         }),
+        signal: AbortSignal.timeout(3000),
       },
     );
     if (!credRes.ok) throw new Error(`credential exchange failed: ${credRes.status}`);
@@ -144,6 +147,7 @@ async function resolveViewer(req) {
     // answers with the viewer, not with this app's owner.
     const meRes = await fetch(`${base}/__api__/v1/user`, {
       headers: { Authorization: `Key ${access_token}` },
+      signal: AbortSignal.timeout(3000),
     });
     if (!meRes.ok) throw new Error(`whoami failed: ${meRes.status}`);
     const me = await meRes.json();
